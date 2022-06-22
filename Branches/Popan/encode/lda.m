@@ -13,10 +13,13 @@ end
 if ~exist('Normalize','var')
     Normalize = 1;
 end
-
-if size(Data,1) > size(Data,2)
-    Data = Data';
+if ~exist('Priors','var')
+Priors = false;
 end
+
+% if size(Data,1) > size(Data,2)
+Data = Data';
+% end
 [Cells, Trials] = size(Data);
 
 % Number of labels
@@ -36,10 +39,15 @@ for I = 1:NumLabels
 end
 
 % Calculate prior probabilities
-if (nargin >= 5)
-    PriorProb = Priors;
-else
+% if (nargin >= 5)
+%     PriorProb = Priors;
+% else
+%     PriorProb = GroupCounts / Trials;
+% end
+if ~Priors
     PriorProb = GroupCounts / Trials;
+else
+    PriorProb = Priors;
 end
 
 % Get coefficients
@@ -64,8 +72,8 @@ end
 
 DB = Weights(1,:) - Weights(2,:);
 
-if ~Control
-    DB = Weights(1,:) - Weights(2,:);
-else
-    DB = Weights(1,:) + Weights(2,:);
-end
+% if ~Control
+%     DB = Weights(1,:) - Weights(2,:);
+% else
+%     DB = Weights(1,:) + Weights(2,:);
+% end

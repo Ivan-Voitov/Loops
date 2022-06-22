@@ -155,7 +155,7 @@ for J = 1:1+DBTest
     CI(1) = mean(CueA) - Temp(1);
     [~,~,Temp] = normfit(CueB);
     CI(2) = mean(CueB) - Temp(1);
-    errorbar([1 2],[mean(CueA); mean(CueB)]',[CI(2) ; CI(1)]','.k');
+    errorbar([1 2],[mean(CueA); mean(CueB)]',[CI(1) ; CI(2)]','.k');
     Ax = gca;
     Ax.YTick = [0 0.5 1];
     Ax.YLim = [0 1];

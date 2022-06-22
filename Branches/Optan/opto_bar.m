@@ -213,6 +213,13 @@ for C = 1:length(Areas)
             set(Axes(Number), 'YTick', []);
         end
         Axes(Number).XTick = [];
+        if Type == 1
+            title(Areas{C})
+        end
+        if C == 1
+            ylabel(swap({'Cue (D%)';'Probe (D%)';'Target (D%)'},Type));
+        end
+        axis square
     end
 end
 end

@@ -15,7 +15,7 @@ for S = 1:length(Meso)
     
     % remove the subthreshold DFFs
     for Type = 1:2 % CD tyoe
-        TempTrial = swaparoo({WMCDTrials{S}; CCDTrials{S}},Type);
+        TempTrial = swap({WMCDTrials{S}; CCDTrials{S}},Type);
         TrigOn = destruct(TempTrial,'Trigger.Delay.Frame');
         TrigOff = destruct(TempTrial,'Trigger.Stimulus.Frame');
         Activities = wind_roi(TempDFF,{TrigOn;TrigOff},'Window',[1 frame(3200,FPS)]);
@@ -27,8 +27,8 @@ for S = 1:length(Meso)
     TempDFF(or(nanmean(Values{2},2)<Threshold,nanmean(Values{1},2)<Threshold),:) = [];
     
     % {zscore(DFFs{S}',[],'omitnan')'} % folds 1 % normalizeLDA [] 0 1
-    [Temp] = encode({{TempDFF},CCDTrials(S)},'Window',[-1000 3200],'OnlyCorrect',true,'Equate',true,'Threshold',[],'Iterate',20,...
-        'Folds',10,'NormalizeLDA',1,'FPS',4.68,'Lag',400);
+    [Temp] = encode({{TempDFF},CCDTrials(S)},'CCD',true,'Window',[-1000 3200],'OnlyCorrect',true,'Equate',true,'Threshold',[],'Iterate',20,...
+        'Folds',-1,'NormalizeLDA',1,'FPS',4.68,'Lag',400);
     %     [Temp] = encode4({{TempDFF},{CCDTrials{S}(1:2:end)}},'Window',[-1000 3200],'OnlyCorrect',true,'Equate',true,'Threshold',[],'Iterate',20,...
     %         'Folds',1,'NormalizeLDA',[],'FPS',4.68,'Lag',0);
     
@@ -39,26 +39,42 @@ for S = 1:length(Meso)
     %     [Temp] = encode4({{TempDFF},{CCDTrials{S}(2:2:end)}},'Window',[-1000 3200],'OnlyCorrect',true,'Equate',true,'Threshold',[],'Iterate',20,...
     %         'Folds',1,'NormalizeLDA',[],'FPS',4.68,'Lag',0);
     [Temp] = encode({{TempDFF},WMCDTrials(S)},'Window',[-1000 3200],'OnlyCorrect',true,'Equate',true,'Threshold',[],'Iterate',20,...
-        'Folds',10,'NormalizeLDA',1,'FPS',4.68,'Lag',400);
+        'Folds',-1,'NormalizeLDA',1,'FPS',4.68,'Lag',400);
     
     WMCD{S}(:) = Temp{1}{1}(2:end);
     WMClass(S) = Temp{3};
     WMCP{S}(:) = Temp{6}{1};
 end
 
+%%
 figure;
 for S = 1:length(Meso)
     Sign = sign(CCDTrials{S}(1).DB);
-    Temp = nanmean(sign(squeeze(WMCD{S})) == (Sign*sign(squeeze(CCD{S}))));
-    %     Temp = corrcoef(squeeze(WMCD{S}),squeeze(CCD{S}));
-    %             Temp = corrcoef(WMCP{S}(~or(isnan(WMCP{S}),isnan(CCP{S}))),CCP{S}(~or(isnan(WMCP{S}),isnan(CCP{S}))));
-    %     ToPlot(S) = Temp(2) .* Sign;
-    ToPlot(S) = Temp;
-    plot(ToPlot);
-    text(1,0.5,strcat({'Average correlation is '}, num2str(mean(ToPlot))));
-    text(1,0,strcat({'Average WM classification accuracy is '},num2str(nanmean(WMClass))));
-    text(1,0.2,strcat({'Average Cue classification accuracy is '},num2str(nanmean(CClass))));
-    Ax = gca; Ax.YLim = [-0.5 1];
+    
+    for PlotType = 1:3
+        if PlotType == 1
+            % sign is matched
+            Temp = nanmean(sign(squeeze(WMCD{S})) == (Sign*sign(squeeze(CCD{S}))));
+            ToPlot(S) = Temp;
+            title('Sign matching correlations')
+        elseif PlotType == 2
+            % angle
+            Temp = corrcoef(squeeze(WMCD{S}),squeeze(CCD{S}));
+            ToPlot(S) = Temp(2) .* Sign;
+            title('CD vector correlations')
+        elseif PlotType == 3
+            % projection
+            %     Temp = corrcoef(WMCP{S}(~or(isnan(WMCP{S}),isnan(CCP{S}))),CCP{S}(~or(isnan(WMCP{S}),isnan(CCP{S}))));
+            %     ToPlot(S) = Temp(2) .* Sign;
+            title('Porjection correlation')
+        end
+        
+        plot(ToPlot);
+        text(1,0.5,strcat({'Average correlation is '}, num2str(mean(ToPlot))));
+        text(1,0,strcat({'Average WM classification accuracy is '},num2str(nanmean(WMClass))));
+        text(1,0.2,strcat({'Average Cue classification accuracy is '},num2str(nanmean(CClass))));
+        Ax = gca; Ax.YLim = [-0.5 1];
+    end
 end
 
 %

@@ -1,12 +1,9 @@
 %% ANALYSIS OF SINGLE CELLS AND LOW-DIMENSIONAL DYNAMICS
-% Fig 2 and Supp Fig 8-9
+% Fig 2 and Supp Fig 8-10
 
 %% LOAD
 load('Meso.mat')
 
-% define area indexes
-AreaIndex = destruct(Meso,'Area');
-AreaNames = {'M2';'AM'};
 % don't count same cells twice
 Remove = false(length(Meso),1); clearvars TempNames
 for Session = 1:length(Meso)
@@ -15,66 +12,80 @@ for Session = 1:length(Meso)
         Remove(Session) = true;
     end
 end
+
+% area indices
 AreaIndex = destruct(Meso,'Area');
 AreaIndex(Remove) = AreaIndex(Remove) + 2;
 AreaNames = {'M2';'AM';'M2 Remaining';'AM Remaining'};
 
 %% MAIN
 for Area = 1:2
-    % 2.c - single cell examples
+    % 2.a, b - single cell examples
     % Area 1 : DT [4 7 9] DR [105 121 139 144] ST [26 41 60]
     % Area 2 : DT [15 20 33 36] DR [147 167 195 196] ST [21 36 43 47]
     triggered_single_cells(Meso(AreaIndex==Area),'ResponseType','DelayResponsive','Sort','Latency','LineLimit',40,...
-        'Ind',swaparoo({[4 7 9];[15 20 33 36]},Area));
+        'Ind',swap({[4 7 9];[15 20 33 36]},Area));
     exportgraphics(gcf,decell(strcat({'Plots/Visan/Single cell example '},AreaNames{Area},{' DT.pdf'})),'ContentType','vector');
     triggered_single_cells(Meso(AreaIndex==Area),'ResponseType','DelayResponsive','Sort','Latency','LineLimit',40,...
-        'Ind',swaparoo({[105 121 139 144];[147 167 195 196]},Area));
+        'Ind',swap({[105 121 139 144];[147 167 195 196]},Area));
     exportgraphics(gcf,decell(strcat({'Plots/Visan/Single cell example '},AreaNames{Area},{' DR.pdf'})),'ContentType','vector');
     triggered_single_cells(Meso(AreaIndex==Area),'ResponseType','StimulusResponsive','Sort','Latency','LineLimit',40,...
-        'Ind',swaparoo({[26 41 60];[21 36 43 47]},Area),'Window',[-1000 2000]);
+        'Ind',swap({[26 41 60];[21 36 43 47]},Area),'Window',[-1000 2000]);
     exportgraphics(gcf,decell(strcat({'Plots/Visan/Single cell example '},AreaNames{Area},{' ST.pdf'})),'ContentType','vector');
     
-    % 2.d, f - list phases of activity
+    % 2.c, e - list phases of activity
     list_all_cells(Meso(AreaIndex==Area),'Bounds',[0 1],'Normalize',1,'TomMemory',true);
     exportgraphics(gcf,decell(strcat('Plots/Visan/',AreaNames{Area},{' Memory cell list norm 1.pdf'})),'ContentType','vector');
     list_all_cells(Meso(AreaIndex==Area),'Bounds',[0 1],'Normalize',1,'TomDiscrimination',true);
     exportgraphics(gcf,decell(strcat('Plots/Visan/',AreaNames{Area},{' Discrimination cell list norm 1.pdf'})),'ContentType','vector');
 
-    % 2.e, g - plot avg traces of all cells for the three triggers for task
+    % 2.d, f - plot avg traces of all cells for the three triggers for task
     [Traces{Area}] = plot_experiment_traces(Meso(AreaIndex==Area),'Spikes',false,'CI',true);
     Ax = gca; Ax.YLim = [0 1.2]; Ax.YTick = [0 1.2];
     exportgraphics(gcf,decell(strcat({'Plots/Visan/Area '},AreaNames{Area},{' cell averaged activity - DELAY CELLS.pdf'})),'ContentType','vector');
     exportgraphics(gcf,decell(strcat({'Plots/Visan/Area '},AreaNames{Area},{' cell averaged activity - STIMULUS CELLS.pdf'})),'ContentType','vector');
     % stats
-    [~,P(1)] = ttest2(nanmean(Traces{Area}{1,1},2), nanmean(Traces{Area}{2,1},2));
-    [~,P(2)] = ttest2(nanmean(Traces{Area}{1,2},2), nanmean(Traces{Area}{2,2},2));
+    [~,P(1)] = ttest2(nanmean(Traces{Area}{1}{1,1},2), nanmean(Traces{Area}{1}{2,1},2));
+    [~,P(2)] = ttest2(nanmean(Traces{Area}{1}{1,2},2), nanmean(Traces{Area}{1}{2,2},2));
+    [~,P(3)] = ttest2(nanmean(Traces{Area}{2}{1,1},2), nanmean(Traces{Area}{2}{2,1},2));
+    [~,P(4)] = ttest2(nanmean(Traces{Area}{2}{1,2},2), nanmean(Traces{Area}{2}{2,2},2));
     
-    % 2.h-k - low dim dynamics
-    plot_lowdim_trajectories(Meso(AreaIndex==Area),'Space','PCA','Smooth',[],'Folds',1,'Dimensions',3,'Focus',true,'Equate',true);
+    % 2.g-j - low dim dynamics
+    plot_lowdim_trajectories(Meso(AreaIndex==Area),'Space','PCA','Smooth',[],'Folds',1,'Dimensions',3,'Focus',true,'Equate',true,'Statistics',true);
     axis square; Ax = gca; if Area == 1; Ax.View =  [111.5048   16.0723]; elseif Area == 2; Ax.View =  [-110.3567    5.7300]; end
     exportgraphics(gcf,decell(strcat({'Plots/Visan/PCA trajectories trial averaged - '},AreaNames{Area},'.pdf')),'ContentType','vector');
     exportgraphics(gcf,decell(strcat({'Plots/Visan/PCA trajectories trial averaged - STATS - '},AreaNames{Area},'.pdf')),'ContentType','vector');
 end
 
 %% SUPPLEMENTARY
-% cell # table maker
-cell_numbers_table(Meso(AreaIndex==2)); % am
-cell_numbers_table(Meso(AreaIndex==1)); % m2
-
-% E7 - latencies of peak responses test (also no interactions)
+% E8 - latencies of peak responses test (also no interactions)
 area_task_latencies(Meso);
 exportgraphics(gcf,'Plots/Visan/Latencies vs task.pdf','ContentType','vector');
 exportgraphics(gcf,'Plots/Visan/Latencies vs area.pdf','ContentType','vector');
 
-% E8 - scatter cells
 for Area = 1:2
+    % E9 - intrinsic dimensionality 6 plots per area
+    Stats{Area} = intrinsic_dimensionality(Meso(AreaIndex==Area));
+    exportgraphics(gcf,decell(strcat({'Plots/Popan/Intrinsic dimensionality - '},AreaNames{Area},'.pdf')),'ContentType','vector');
+    
+    % E10 - scatter cells
     variance_scatter(Meso(AreaIndex==Area),'Segments',20,'CCD',false);
     exportgraphics(gcf,decell(strcat({'Plots/Popan/Scatter TCD'}, AreaNames{Area} ,'.pdf')),'ContentType','vector');
     variance_scatter(Meso(AreaIndex==Area),'Segments',20,'CCD',true);
     exportgraphics(gcf,decell(strcat({'Plots/Popan/Scatter CCD'}, AreaNames{Area} ,'.pdf')),'ContentType','vector');
 end
 
-%% L.F.R.
+% dimensinoality statistics
+P(1) = signrank(nanmean([Stats{1}(:,1,1,1) Stats{1}(:,2,1,1)],2),nanmean([Stats{1}(:,1,2,1) Stats{1}(:,2,2,1)],2));
+P(2) = signrank(nanmean([Stats{2}(:,1,1,1) Stats{2}(:,2,1,1)],2),nanmean([Stats{2}(:,1,2,1) Stats{2}(:,2,2,1)],2));
+P(3) = ranksum(nanmean([Stats{1}(:,1,1,1) Stats{1}(:,2,1,1)],2),nanmean([Stats{2}(:,1,1,1) Stats{2}(:,2,1,1)],2));
+P(4) = ranksum(nanmean([Stats{1}(:,1,2,1) Stats{1}(:,2,2,1)],2),nanmean([Stats{2}(:,1,2,1) Stats{2}(:,2,2,1)],2));
+
+%% MISC
+% cell # table maker
+cell_numbers_table(Meso(AreaIndex==2)); % am
+cell_numbers_table(Meso(AreaIndex==1)); % m2
+
 propie(Meso)
 
 for Area = 1:2

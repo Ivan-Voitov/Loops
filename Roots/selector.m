@@ -36,12 +36,25 @@ for T = 1:length(Trials)
     
     %% BASIC 
     if ~ischar(varargin{1}) && ~iscell(varargin{1})
-        Sel = varargin{1};
+        if isnan(varargin{1})
+            Sel(:) = false;
+        else
+            Sel = varargin{1};
+        end
     end
     %% select hard-coded
     % rotaty stuff
     if any(strcmp(varargin,'Normal'))
         Sel = and(Sel,destruct(Trial,'Contrast')~=0);
+    end
+    
+    % inner blocks in WM
+    if any(strcmp(varargin,'Inner'))
+        Sel = or(destruct(Trial,'Task')==2,and(Sel,and(destruct(Trial,'Task')==1,destruct(Trial,'Contrast')~=0)));
+    end
+    % outer blocks in WM
+    if any(strcmp(varargin,'Outer'))
+        Sel = or(destruct(Trial,'Task')==2,and(Sel,and(destruct(Trial,'Task')==1,destruct(Trial,'Contrast')==0)));
     end
     
     %     if any(strcmp(varargin,'Hyper'))
@@ -79,6 +92,7 @@ for T = 1:length(Trials)
         Sel = and(Sel,HasFrames);
     end
     % behaviour stuff
+    PostFlag1 = false;
     for I = 1:length(Trial)
         if any(strcmp(varargin,'A'))
             if Trial(I).Block == 1
@@ -124,6 +138,11 @@ for T = 1:length(Trials)
         end
         if any(strcmp(varargin,'Target'))
             if Trial(I).Type ~= 3
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'NotProbe'))
+            if Trial(I).Type == 2
                 Sel(I) = false;
             end
         end
@@ -184,8 +203,14 @@ for T = 1:length(Trials)
         end
         
         if any(strcmp(varargin,'Post'))
+            try
             if ~(isnan(Trial(I).Post.Probe) && isnan(Trial(I).Post.Target))
                 Sel(I) = false;
+            end
+            catch
+                if ~(isnan(Trial(I).Post.Target))
+                    Sel(I) = false;
+                end
             end
         end
         if any(strcmp(varargin,'PostProbe'))
@@ -195,6 +220,11 @@ for T = 1:length(Trials)
         end
       
         %opto stuff
+        if any(strcmp(varargin,'HasMasking'))
+            if (Trial(I).MaskOn == 0)
+                Sel(I) = false;
+            end
+        end
         if any(strcmp(varargin,'NoLight'))
             if ~(Trial(I).Light == 0)
                 Sel(I) = false;
@@ -220,7 +250,16 @@ for T = 1:length(Trials)
                 Sel(I) = false;
             end
         end
-        
+        if any(strcmp(varargin,'SynSet'))
+            if ~or(Trial(I).Set == 1,Trial(I).Set == 4)
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'BiSet'))
+            if ~(Trial(I).Set == 3)
+                Sel(I) = false;
+            end
+        end
         if or(any(strcmp(varargin,'Comb')),any(strcmp(varargin,'NotS1')))
             if ~(or(Trial(I).Light == 0,Trial(I).Light ~= 3))
                 Sel(I) = false;
@@ -260,7 +299,38 @@ for T = 1:length(Trials)
             end
         end
         if any(strcmp(varargin,'bM2'))
-            if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+%             if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+            if ~(or(Trial(I).Light == 0,Trial(I).Light == 8))
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'bAM'))
+            %             if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+            if ~(or(Trial(I).Light == 0,Trial(I).Light == 7))
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'bS1'))
+            %             if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+            if ~(or(Trial(I).Light == 0,Trial(I).Light == 9))
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'AM+M2'))
+            %             if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+            if ~(or(Trial(I).Light == 0,Trial(I).Light == 10))
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'M2+S1'))
+            %             if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+            if ~(or(Trial(I).Light == 0,Trial(I).Light == 11))
+                Sel(I) = false;
+            end
+        end
+        if any(strcmp(varargin,'S1+AM'))
+            %             if ~(or(Trial(I).Light == 0,or(Trial(I).Light == 6,Trial(I).Light == 2)))
+            if ~(or(Trial(I).Light == 0,Trial(I).Light == 12))
                 Sel(I) = false;
             end
         end
@@ -337,6 +407,13 @@ for T = 1:length(Trials)
             if ~(Trial(I).DB == 15)
                 Sel(I) = false;
             end
+        end
+        
+        if any(strcmp(varargin,'PostDiscriminationTask'))
+            if Trial(I).Task == 2
+                PostFlag1 = true;
+            end
+            Sel(I) = PostFlag1;
         end
     end
     

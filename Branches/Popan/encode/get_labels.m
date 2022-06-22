@@ -1,4 +1,4 @@
-function [Labels] = get_labels(Trials,CCD,Stim,CDB,Shuffle,OnlyCorrect,OnlyPostProbe,OnlyPostCue,Shift)
+function [Labels] = get_labels(Trials,CCD,Stim,DCD,Shuffle,OnlyCorrect,OnlyPostProbe,OnlyPostCue,Shift,History)
 
 if ~iscell(Trials)
     Trials = {Trials};
@@ -10,14 +10,24 @@ for S = 1:length(Trials)
         Labels = double(destruct(Trial,'Block') + 1);
         % always not post target % kinda not needed if context rip
         Labels(~isnan(destruct(Trial,'Post.Target'))) = nan;
-    elseif Stim
+    elseif Stim && CCD
         Labels = double(destruct(Trial,'Stimulus') == 13);
         Labels(destruct(Trial,'Stimulus') == 17) = 2;
         Labels(Labels == 0) = nan;
-    elseif CDB
+    elseif DCD
         Labels = ((sign(destruct(Trial,'DB')) .* 0.5) + 1.5);
-    else
+    else % is TCD
         Labels = 3 - destruct(Trial,'Task');
+    end
+    
+    % overwrite it fuck it
+    if History
+        Labels = destruct(Trial,'Post.Cue')>4;
+        try
+            Labels(isnan(destruct(Trial,'Post.Cue'))) = ...
+                destruct(Trial(isnan(destruct(Trial,'Post.Cue'))),'Post.Distractor')>4;
+        end
+        Labels = double(Labels) +1;
     end
     
     if Shuffle

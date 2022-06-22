@@ -15,7 +15,7 @@ for Onset = [{'EarlyDelayOnset'} {'LateDelayOnset'} {'StimulusOnset'}]
     I = I + 1;
     [Perf,~,LightSig] = performance(selector(Trial,Onset{:},'NoReset','Post'),'Responses','OptoDelta',true);
     TempPerf = cat(3,Perf{3:end});
-    for K = 3:length(Perf)
+    for K = 3:length(LightSig)
         Perf{K}(LightSig{K} > Threshold) = 0;
     end
     if Option == 1 % delta task delta perf

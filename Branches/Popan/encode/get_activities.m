@@ -1,4 +1,4 @@
-function [Activities,TrigOn,TrigOff] = get_activities(DFFs,Trials,Range,LabelFocus,Smooth,PCsCat,Threshold,Ripped,FPS,Stim,Minus,ZScore,Iterate,Five,DePre,PCsRaw,PCsExclude,Lag)
+function [Activities,TrigOn,TrigOff] = get_activities(DFFs,Trials,Range,LabelFocus,Smooth,PCsCat,Threshold,Ripped,FPS,Stim,Minus,ZScore,Iterate,Five,DePre,PCsRaw,PCsExclude,Lag,RNG)
 
 if ~iscell(DFFs)
     Trials = {Trials};
@@ -45,7 +45,7 @@ for S = 1:length(DFFs)
     % ONLY DONE ONCE!!! -ish... need EnNaN for pc stuff
     Activities = wind_roi(DFF,{TrigOn;TrigOff},'Window',Range);
     if ~isempty(Threshold)
-        [EnNaN] = threshold_values(Activities,Range,Iterate,Threshold,Five,DePre);
+        [EnNaN] = threshold_values(Activities,Range,Iterate,Threshold,Five,DePre,RNG);
         % hack to make sure i get delay responsive things
         if FPS ~= 22.79
             try

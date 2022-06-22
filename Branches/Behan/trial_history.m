@@ -89,11 +89,11 @@ Colours;
 % Red =  Red;
 hold on;
 % axis([1 7 0 100]);
-axis([2 20 0 100]);
+axis([1 20 0 100]);
 % Axes.XTick = [1:1:7];
 % Axes.XTickLabel = 1:3:22;
-Axes(1).XTick = [2:6:20];
-Axes(1).XTickLabel = 2:6:20;
+Axes(1).XTick = [1:6:20];
+Axes(1).XTickLabel = 1:6:20;
 xlabel('Number of Trials from previous Target','FontSize',12);
 ylabel('Response probability (%)','FontSize',12)
 Axes(1).YColor = 'k';
@@ -125,11 +125,11 @@ F = plot(squeeze(Perf(3,2,:))'.*100,'Color',Red,'LineWidth',2,'LineStyle','-','M
 set(gcf, 'currentaxes', Axes(2)); %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 hold on;
 % axis([1 7 0 100]);
-axis([2 20 0 20]);
+axis([1 20 0 20]);
 % Axes.XTick = [1:1:7];
 % Axes.XTickLabel = 1:3:22;
-Axes(2).XTick = [2:6:20];
-Axes(2).XTickLabel = 2:6:20;
+Axes(2).XTick = [1:6:20];
+Axes(2).XTickLabel = 1:6:20;
 xlabel('Number of Trials from previous Target','FontSize',12);
 ylabel('Response probability (%)','FontSize',12)
 Axes(2).YColor = 'k';

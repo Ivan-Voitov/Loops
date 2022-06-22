@@ -18,6 +18,7 @@ for I=1:2:numel(varargin)
     eval([varargin{I} '= varargin{I+1};']);
 end
 
+rng(100)
 
 if ~Simultaneous
     Projection = nan(Dimensions,frame(6000),length(Trial)); % 6000 is just longest i can get with 2000 stim and 4000 delay max

@@ -135,18 +135,18 @@ for Type = 1:size(DFFs,1)
             [Traces{Type,LL}{1,1}, DP] = avg_triggered(DFFs{Type,LL},Trials{Type,LL},1,'Window',Window{1},'FPS',FPS,'DePre',DePre,'Smooth',Smooth2,'Mirror',Mirror);
             Traces{Type,LL}{1,2} = avg_triggered(DFFs{Type,LL},Trials{Type,LL},2,'Window',Window{2},'FPS',FPS,'DePre',DP,'Smooth',Smooth2,'Mirror',Mirror);
         else
-            [Traces{Type,LL}{1,1}, DP] = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swaparoo({'Discrimination';'CueA'},CCD+1)),1,'Window',Window{1},'FPS',FPS,'DePre',DePre,'Smooth',Smooth2);
-            Traces{Type,LL}{1,2} = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swaparoo({'Discrimination';'CueA'},CCD+1)),2,'Window',Window{2},'FPS',FPS,'DePre',DP,'Smooth',Smooth2);
-            [Traces{Type,LL}{2,1}, DP] = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swaparoo({'Memory';'CueB'},CCD+1)),1,'Window',Window{1},'FPS',FPS,'DePre',DePre,'Smooth',Smooth2);
-            Traces{Type,LL}{2,2} = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swaparoo({'Memory';'CueB'},CCD+1)),2,'Window',Window{2},'FPS',FPS,'DePre',DP,'Smooth',Smooth2);
+            [Traces{Type,LL}{1,1}, DP] = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swap({'Discrimination';'CueA'},CCD+1)),1,'Window',Window{1},'FPS',FPS,'DePre',DePre,'Smooth',Smooth2);
+            Traces{Type,LL}{1,2} = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swap({'Discrimination';'CueA'},CCD+1)),2,'Window',Window{2},'FPS',FPS,'DePre',DP,'Smooth',Smooth2);
+            [Traces{Type,LL}{2,1}, DP] = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swap({'Memory';'CueB'},CCD+1)),1,'Window',Window{1},'FPS',FPS,'DePre',DePre,'Smooth',Smooth2);
+            Traces{Type,LL}{2,2} = avg_triggered(DFFs{Type,LL},selector(Trials{Type,LL},swap({'Memory';'CueB'},CCD+1)),2,'Window',Window{2},'FPS',FPS,'DePre',DP,'Smooth',Smooth2);
             
             if DBBased
                 for Z = 1:size(DFFs{Type,LL},2)
                     if any(Z==DBBased) % Trials{Type,LL}{Z}(1).DB == 15
                         for SSS = 1:2
                             Temp = Traces{Type,LL}{1,SSS}(Z,:);
-                            Traces{Type,LL}{1,SSS}(Z,:) = Traces{Type,LL}{2,SSS}(Z,:) .* swaparoo([-1 1],OfAvg+1);
-                            Traces{Type,LL}{2,SSS}(Z,:) = Temp  .* swaparoo([-1 1],OfAvg+1);
+                            Traces{Type,LL}{1,SSS}(Z,:) = Traces{Type,LL}{2,SSS}(Z,:) .* swap([-1 1],OfAvg+1);
+                            Traces{Type,LL}{2,SSS}(Z,:) = Temp  .* swap([-1 1],OfAvg+1);
                         end
                     end
                 end
@@ -246,7 +246,7 @@ for Type = 1:size(DFFs,1)
                 Axes = gca;
             end
             if ~Mirror
-                Colour = swaparoo({swaparoo({Blue;Green},CCD+1);swaparoo({Red;Orange},CCD+1)},Context);
+                Colour = swap({swap({Blue;Green},CCD+1);swap({Red;Orange},CCD+1)},Context);
             else
                 Colour = [0 0 0];
             end

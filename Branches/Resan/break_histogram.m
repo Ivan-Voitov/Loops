@@ -30,6 +30,7 @@ if Z
     end
 end
 %% extract
+rng(100);
 for Task = 1:length(Tasks)
     try
         clearvars ShuffleDifference
@@ -104,10 +105,10 @@ for Task = 1:length(Tasks)
 end
 
 if length(Tasks)==2
-    Ax{1}.YLim = [0 250];%max(Ax{1}.YLim,Ax{2}.YLim);
-    Ax{2}.YLim = [0 250];%max(Ax{1}.YLim,Ax{2}.YLim);
-    Ax{1}.YTick = [0 250];
-    Ax{2}.YTick = [0 250];
+    Ax{1}.YLim = [0 200];%max(Ax{1}.YLim,Ax{2}.YLim);
+    Ax{2}.YLim = [0 200];%max(Ax{1}.YLim,Ax{2}.YLim);
+    Ax{1}.YTick = [0 200];
+    Ax{2}.YTick = [0 200];
 end
 
 %     histogram(ToPlot{2}{2},50,'BinWidth',0.04,'Normalization','count'...

@@ -99,6 +99,13 @@ b(1).CData(1,:) = [0.5 0.5 0.5];
 b(1).CData(2,:) = [0.5 0.5 0.5];
 hold on
 errorbar([1 2],[Mean(1); Mean(2)]',[CI(2) ; CI(1)]','.k');
+
+for Column = 1:2
+    for S = 1:size(SimpleNumbers,1)
+        plot(Column+((rand-0.5).*0.3), SimpleNumbers(S,Column),'Marker','o','color',Black);
+    end
+end
+
 Ax = gca;
 Ax.YTick = [0 0.5 1];
 Ax.YLim = [0 1];

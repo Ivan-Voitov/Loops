@@ -2,6 +2,10 @@
 % and stimulus
 
 function plot_trial_traces(Index,varargin)
+CCD = false;
+Cross = false;
+DCD = false;
+
 FPS = 4.68;%[11.18] %  22.39  for mesoscope... don't know...
 Window = {[-1000 3200];[-1000 2000]};
 
@@ -49,9 +53,13 @@ end
 % DFFs and Trials are cells with precursor cells of [TYPE,LIGHT] which
 % could simply be 1,1 for e.g., popan trace
 if ~iscell(Index)
-    if ~CCD
+    if ~CCD && ~DCD
         for Type = 1:length(Types)
-            [DFFs{Type,1},Trials{Type,1}] = rip(Index,S,Z,Zcore,Hyper,'DeNaN',Types{Type},'Active');
+            [DFFs{Type,1},Trials{Type,1}] = rip(Index,S,Z,Zcore,swap({Hyper;'DistractorCue'},Cross+1),'DeNaN',Types{Type},'Active');
+        end
+    elseif ~CCD
+        for Type = 1:length(Types)
+            [DFFs{Type,1},Trials{Type,1}] = rip(Index,S,Z,Zcore,'Rotext','DeNaN',Types{Type},'Active');
         end
     else
         for Type = 1:length(Types)
@@ -109,7 +117,16 @@ for S = 1:length(DFFs{1})
                     TrigOn = destruct(Trials{Type,LL}{S}(destruct(Trials{Type,LL}{S},'Block')==B-1),'Trigger.Stimulus.Frame');
                     TrigOff = destruct(Trials{Type,LL}{S}(destruct(Trials{Type,LL}{S},'Block')==B-1),'Trigger.Post.Frame');
                     [Traces{Type,LL}{B,2}] = wind_roi(DFFs{Type,LL}{S},{TrigOn;TrigOff},'Window',frame(Window{2},FPS)-1);
+                end
+            elseif DCD
+                for B = 1:2
+                    TrigOn = destruct(Trials{Type,LL}{S}(destruct(Trials{Type,LL}{S},'DB')==swap([-15 15],B)),'Trigger.Delay.Frame');
+                    TrigOff = destruct(Trials{Type,LL}{S}(destruct(Trials{Type,LL}{S},'DB')==swap([-15 15],B)),'Trigger.Stimulus.Frame');
+                    [Traces{Type,LL}{B,1}] = wind_roi(DFFs{Type,LL}{S},{TrigOn;TrigOff},'Window',frame(Window{1},FPS)-1);
                     
+                    TrigOn = destruct(Trials{Type,LL}{S}(destruct(Trials{Type,LL}{S},'DB')==swap([-15 15],B)),'Trigger.Stimulus.Frame');
+                    TrigOff = destruct(Trials{Type,LL}{S}(destruct(Trials{Type,LL}{S},'DB')==swap([-15 15],B)),'Trigger.Post.Frame');
+                    [Traces{Type,LL}{B,2}] = wind_roi(DFFs{Type,LL}{S},{TrigOn;TrigOff},'Window',frame(Window{2},FPS)-1);
                 end
             else
                 for T = 1:2
@@ -125,8 +142,19 @@ for S = 1:length(DFFs{1})
         end
     end
     
+    if Cross % only works for single sessions
+        load(Index.Name,'Trial');
+        TempDB = Trial(and(Index.Combobulation,destruct(Trial,'Task')==2)).DB;
+        TempTrial = Trials{1}{1}(destruct(Trials{1}{1},'Task')==2);
+        Traces{1}{1,1}(:,:,(destruct(TempTrial,'DB') == TempDB)) = -Traces{1}{1,1}(:,:,(destruct(TempTrial,'DB') == TempDB));
+        Traces{1}{1,2}(:,:,(destruct(TempTrial,'DB') == TempDB)) = -Traces{1}{1,2}(:,:,(destruct(TempTrial,'DB') == TempDB));
+    end
+    
     %% plot
     Colours;
+%     if Cross
+%         Red = Orange;
+%     end
     for Type = 1:size(DFFs,1)
         if ~Sub
             figure;
@@ -157,7 +185,7 @@ for S = 1:length(DFFs{1})
                     Axes = gca;
                 end
                 %                 if Context == 1; Colour = Blue; else; Colour = Red; end
-                Colour = swaparoo({swaparoo({Blue;Orange},CCD+1);swaparoo({Red;Green},CCD+1)},Context);
+                Colour = swap({swap({Blue;Orange},DCD+CCD+1);swap({Red;Green},DCD+CCD+1)},Context);
                 for L = 1:1+Light
                     Trace = squeeze(Traces{Type,L}{Context,Trigger})';
                     if CI && ~(Light && L == 1)

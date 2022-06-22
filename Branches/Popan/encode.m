@@ -6,9 +6,13 @@
 % also has contrasts
 
 function [Index] = encode(Index, varargin)
+TCD = true;
 CCD = false;
-CDB = false;
-Stim = false;
+DCD = false;
+CCDDisc = false;
+Stimulus = false;
+History = false;
+
 Folds = -1;
 Window = [-1000 3200]; % first term is the pre
 Model = 'LDA';
@@ -34,6 +38,8 @@ OnlyPostProbe = false;
 Smooth = 0;
 BasisIn = [];
 ZScore = false;
+Memory = false;
+Discrimination = false;
 
 MultiValue = [];
 
@@ -51,12 +57,28 @@ CueTraceValue = false;
 LabelFocus = false;
 SoftFocus = false;
 
+Balance = false;
+
+RNG = 10;
+
 %% PASS ARGUMENTS TO CONTROLS
 for I=1:2:numel(varargin)
     eval([varargin{I} '= varargin{I+1};']);
 end
 
 Range = frame(Window,FPS);
+
+if exist('Stim','var') % bug prevention for old code
+    if Stim
+        Stimulus = true;
+    end
+end
+
+if Discrimination || Memory
+   Task = swap({'Discrimination';'Memory'},Memory+1);
+else
+    Task = [];
+end
 
 if isstruct(Index)
     if NoStim
@@ -98,18 +120,15 @@ for Session = 1:length(DFFs)
     clearvars TempValues
     if ~Flag
         Loaded = load(Index(Session).Name,'Trial');
-        if CCD || Stim
+        if CCD || CCDDisc % needs || stimulus for old code (sweep) to work
             Trial = Loaded.Trial;
             TempDB = Trial(and(Index(Session).Combobulation,destruct(Trial,'Task')==1)).DB;
             TempSel = false(length(Trial),1);
             TempSel(and(destruct(Trial,'DB')==TempDB,destruct(Trial,'Task')==1)) = true;
             Trial = Trial(and(destruct(Trial,'DB')==TempDB,destruct(Trial,'Task')==1));
             if ~OnlyPostProbe
-                if ~Stim
-                    [Trial,TempTempSel] = selector(Trial,'NoReset','HasFrames','Nignore','Post');
-                else
-                    [Trial,TempTempSel] = selector(Trial,'NoReset','HasFrames','Nignore','Cue');
-                end
+                % main ccd one
+                [Trial,TempTempSel] = selector(Trial,'NoReset','HasFrames','Nignore',swap({'Post';'Cue'},Stimulus+1));
             else
                 [Trial,TempTempSel] = selector(Trial,'HasFrames','Nignore');
             end
@@ -120,12 +139,13 @@ for Session = 1:length(DFFs)
                 end
             end
             Sel = TempSel;
-        elseif CDB
+        elseif DCD % rotation only in disc blocks >>> add both tasks at some point?
             Trial = Loaded.Trial;
             %             TempSel = false(length(Trial),1);
             %             TempSel(destruct(Trial,'Task')==2) = true;
             %             Trial = Trial(and(destruct(Trial,'DB')==TempDB,destruct(Trial,'Task')==1));
-            [Trial,Sel] = selector(Trial,'NoReset','HasFrames','Nignore','Post','Discrimination');
+            [Trial,Sel] = selector(Trial,'NoReset','HasFrames','Nignore',swap({'Post';'Cue'},Stimulus+1),'Discrimination');
+
             if length(unique(destruct(Trial,'DB'))) == 1
                 Index(Session).Trace = nan;
                 Index(Session).AvgTrace = nan;
@@ -142,7 +162,7 @@ for Session = 1:length(DFFs)
             %             end
             %             Sel = TempSel;
         else
-            [Trial,Sel] = selector(Loaded.Trial,Index(Session).Combobulation,'NoReset','HasFrames','Post','Nignore','NoLight'); % no reason not to analyze trials
+            [Trial,Sel] = selector(Loaded.Trial,Index(Session).Combobulation,Task,'NoReset','HasFrames',swap({'Post';'Cue'},Stimulus+1),'Nignore','NoLight'); % no reason not to analyze trials
         end
     else
         Trial = Trials{Session};
@@ -150,14 +170,14 @@ for Session = 1:length(DFFs)
     end
     
     % get labels
-    Labels = get_labels(Trial,CCD,Stim,CDB,Shuffle,OnlyCorrect,OnlyPostProbe,OnlyPostCue,Shift);
+    Labels = get_labels(Trial,or(CCD,CCDDisc),Stimulus,DCD,Shuffle,OnlyCorrect,OnlyPostProbe,OnlyPostCue,Shift,History);
     
     % get activities
     [Activities,TrigOn,TrigOff ]= get_activities(DFFs{Session},Trial,Range,LabelFocus,Smooth,PCsCat,...
-        Threshold,Ripped,FPS,Stim,Minus,ZScore,Iterate,Five,DePre,PCsRaw,PCsExclude,Lag);
+        Threshold,Ripped,FPS,Stimulus,Minus,ZScore,Iterate,Five,DePre,PCsRaw,PCsExclude,Lag,RNG);
     
     % get values after threshold
-    Values= get_values(Activities,Clever,Five,DePre,Range,ValuesIn,PCsCloud,Cells);
+    Values= get_values(Activities,Clever,Five,DePre,Range,ValuesIn,Iterate,PCsCloud,Cells,RNG);
     
     % en-nan labels of nan values
     X = find(~all(isnan(Values)'),1);
@@ -168,10 +188,10 @@ for Session = 1:length(DFFs)
 
         % get activities
         TempActivities = get_activities(DFFs{Session},Trial,TempRange,LabelFocus,Smooth,PCsCat,...
-            Threshold,Ripped,FPS,Stim,Minus,ZScore,Iterate,Five,DePre,PCsRaw,PCsExclude,MultiValue{2});
+            Threshold,Ripped,FPS,Stimulus,Minus,ZScore,Iterate,Five,DePre,PCsRaw,PCsExclude,MultiValue{2},RNG);
         
         % get values after threshold
-        TempValues = get_values(TempActivities,Clever,Five,DePre,TempRange,ValuesIn,PCsCloud,Cells);
+        TempValues = get_values(TempActivities,Clever,Five,DePre,TempRange,ValuesIn,Iterate,PCsCloud,Cells,RNG);
         
         MultiValueIn = TempValues;
     else
@@ -192,7 +212,7 @@ for Session = 1:length(DFFs)
     %% Discriminate
     clearvars TempBases TempTrace TempClasses TempDelayTrace TempAuxTrace
     TempScores = nan(length(Labels),Iterate);
-    for I = 1:Iterate
+    for I = 1:swap([1,Iterate],Equate+1)
         Loop = 1;
         while 1
             if Equate
@@ -207,11 +227,15 @@ for Session = 1:length(DFFs)
             
             if ~isempty(BasisIn)
                 [TempBasis, TempScore, TempClasses(:,I), PartitionedBasis] = ...
-                    discriminate2(Values,IterLabels,'Folds',Folds,'Model',Model,'Reg',Regularization,'Normalize',NormalizeLDA,...
+                    discriminate2(Values,IterLabels,'Folds',Folds,'Model',Model,...
+                    'Reg',Regularization,'Normalize',NormalizeLDA,...
                     'BasisIn',BasisIn{Session}');
             else
                 [TempBasis, TempScore, TempClasses(:,I), PartitionedBasis] = ...
-                    discriminate2(Values,IterLabels,'MultiValue',MultiValueIn,'Equate',swaparoo([false Equate],2-PCsRaw),'Folds',Folds,'Model',Model,'Reg',Regularization,'Normalize',NormalizeLDA);
+                    discriminate2(Values,IterLabels,'MultiValue',MultiValueIn,...
+                    'Equate',swap([false Equate],2-PCsRaw),'Folds',Folds,...
+                    'Model',Model,'Reg',Regularization,'Normalize',NormalizeLDA,...
+                    'Balance',Balance);
             end
             
             if isnan(PartitionedBasis(1,1)) && Loop <= 100
@@ -356,7 +380,7 @@ for Session = 1:length(DFFs)
     %         % debug plot
     %         figure;plot(Traces{Session},'k','LineWidth',1); hold on
     %         for Z = 1:length(TrigOn)
-    %             line([TrigOn(Z) TrigOn(Z)],[min(Traces{Session}) max(Traces{Session})],'LineWidth',1,'color',swaparoo({'r','b',[0.5 0.5 0.5]},Labels(Z)))
+    %             line([TrigOn(Z) TrigOn(Z)],[min(Traces{Session}) max(Traces{Session})],'LineWidth',1,'color',swap({'r','b',[0.5 0.5 0.5]},Labels(Z)))
     %         end
     
     Score = nan(length(Sel),1);
@@ -364,19 +388,54 @@ for Session = 1:length(DFFs)
     Scores{Session} = Score;
     %% save
     if ~Flag
-        if ~CCD && ~Stim
+        if History
+            Index(Session).HistoryTrace = Traces{Session};
+            Index(Session).HistoryAvgTrace = AuxTraces{1}{Session};
+            Index(Session).HistoryBasis = Bases{Session};
+            Index(Session).HistoryScore = Scores{Session};
+            Index(Session).HistoryClass = Classes(Session);
+        elseif ~CCD && ~Stimulus && ~DCD
             Index(Session).Trace = Traces{Session};
             Index(Session).AvgTrace = AuxTraces{1}{Session};
             Index(Session).Basis = Bases{Session};
             Index(Session).Score = Scores{Session};
             Index(Session).Class = Classes(Session);
-        elseif ~Stim
+            Index(Session).TaskTrace = Traces{Session};
+            Index(Session).TaskAvgTrace = AuxTraces{1}{Session};
+            Index(Session).TaskBasis = Bases{Session};
+            Index(Session).TaskScore = Scores{Session};
+            Index(Session).TaskClass = Classes(Session);
+        elseif ~Stimulus && CCD
             Index(Session).CueTrace = Traces{Session};
             Index(Session).CueAvgTrace = AuxTraces{1}{Session};
             Index(Session).CueBasis = Bases{Session};
             Index(Session).CueScore = Scores{Session};
             Index(Session).CueClass = Classes(Session);
-        elseif Stim
+        elseif ~Stimulus && DCD
+            Index(Session).DistractorTrace = Traces{Session};
+            Index(Session).DistractorAvgTrace = AuxTraces{1}{Session};
+            Index(Session).DistractorBasis = Bases{Session};
+            Index(Session).DistractorScore = Scores{Session};
+            Index(Session).DistractorClass = Classes(Session);
+        elseif Stimulus && ~CCD && ~DCD
+            Index(Session).TaskStimulusTrace = Traces{Session};
+            Index(Session).TaskStimulusAvgTrace = AuxTraces{1}{Session};
+            Index(Session).TaskStimulusBasis = Bases{Session};
+            Index(Session).TaskStimulusScore = Scores{Session};
+            Index(Session).TaskStimulusClass = Classes(Session);
+        elseif Stimulus && CCD
+            Index(Session).CueStimulusTrace = Traces{Session};
+            Index(Session).CueStimulusAvgTrace = AuxTraces{1}{Session};
+            Index(Session).CueStimulusBasis = Bases{Session};
+            Index(Session).CueStimulusScore = Scores{Session};
+            Index(Session).CueStimulusClass = Classes(Session);
+        elseif Stimulus && DCD
+            Index(Session).DistractorStimulusTrace = Traces{Session};
+            Index(Session).DistractorStimulusAvgTrace = AuxTraces{1}{Session};
+            Index(Session).DistractorStimulusBasis = Bases{Session};
+            Index(Session).DistractorStimulusScore = Scores{Session};
+            Index(Session).DistractorStimulusClass = Classes(Session);
+        elseif Stimulus
             Index(Session).StimTrace = Traces{Session};
             Index(Session).StimAvgTrace = AuxTraces{1}{Session};
             Index(Session).StimBasis = Bases{Session};

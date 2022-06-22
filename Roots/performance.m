@@ -6,12 +6,19 @@ end
 
 %% hard code some selections for opto only
 if ~iscell(TrialCells)
-    Trial = TrialCells; TrialCells = cell(8,1); [TrialCells{:}] = deal(Trial(1));
+    Trial = TrialCells; TrialCells = cell(16,1); [TrialCells{:}] = deal(Trial(1));
     Set = destruct(Trial,'Set');
-    for K = 1:8
+    for K = 1:16
         Flag = false; % for removing first trialscells trial
         for I = 1:length(Trial)
-            if Trial(I).Light == (K-2) || and(and(K == 1, or(Set(I) == 2, Set(I) == 5)),Trial(I).Light == 0)
+            if Trial(I).Light == (K-2) ||...
+                    and(and(K == 15, or(Set(I) == 1, Set(I) == 4)),Trial(I).Light == 0) ||...
+                    and(and(K == 16, Set(I) == 3),Trial(I).Light == 0) ||...
+                    and(and(K == 1, or(Set(I) == 2, Set(I) == 5)),Trial(I).Light == 0)
+                % k == 1 is light 0 in set 2 and 5
+                % k == 2 is light 0 in all sets
+                % k == 15 is light 0 in set 1,4 (multiarea)
+                % k == 16 is light 0 in set 3 (bilat)
                 TrialCells{K}(end+Flag) = Trial(I);
                 Flag = true;
             end
@@ -122,6 +129,12 @@ if OptoDelta
 %                 CI{K}(Task,Type,1) = -(Rate{1}(Task,Type) - CI{K}(Task,Type,1));
 %                 CI{K}(Task,Type,2) = -(Rate{1}(Task,Type) - CI{K}(Task,Type,2));
             end
+            for K = 9:11
+                Rate{K}(Task,Type) = -(Rate{16}(Task,Type) - Rate{K}(Task,Type));
+            end
+            for K = 12:14
+                Rate{K}(Task,Type) = -(Rate{15}(Task,Type) - Rate{K}(Task,Type));
+            end
         end
     end
 end
@@ -145,7 +158,15 @@ try
                     C = sum(Numbers{K}(Features{K}{Task,Type}));
                     D = sum(Numbers{K}(Features{K}{Task,Type})==0);
                     [~,ControlSig{K}(Task,Type)] = fishertest([A B;C D]);
-%                     ControlSig{K}(Task,Type) = ranksum(Numbers{1}(Features{1}{Task,Type}),Numbers{K}(Features{K}{Task,Type}));
+                    %                     ControlSig{K}(Task,Type) = ranksum(Numbers{1}(Features{1}{Task,Type}),Numbers{K}(Features{K}{Task,Type}));
+                end
+                for K = 9:14
+                    A = sum(Numbers{16-(K>11)}(Features{16-(K>11)}{Task,Type}));
+                    B = sum(Numbers{16-(K>11)}(Features{16-(K>11)}{Task,Type})==0);
+                    C = sum(Numbers{K}(Features{K}{Task,Type}));
+                    D = sum(Numbers{K}(Features{K}{Task,Type})==0);
+                    [~,ControlSig{K}(Task,Type)] = fishertest([A B;C D]);
+                    %                     ControlSig{K}(Task,Type) = ranksum(Numbers{1}(Features{1}{Task,Type}),Numbers{K}(Features{K}{Task,Type}));
                 end
             else
                 for K = 1:length(TrialCells)

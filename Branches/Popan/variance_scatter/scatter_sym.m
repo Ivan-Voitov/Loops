@@ -35,7 +35,8 @@ Min = (min(min(NoiseHighLine(:)), min(NoiseLowLine(:))));
 Min = min(Min,0);
 
 %% plot
-[~, ~] = tight_fig(1, 1, 0.02, [0.1 0.1], [0.1 0.1],1,600,600);
+% [~, ~] = tight_fig(1, 1, 0.02, [0.1 0.1], [0.1 0.1],1,600,600);
+figure;
 axis([Min Max Min Max])
 
 Colours;

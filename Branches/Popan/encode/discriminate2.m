@@ -6,10 +6,16 @@ Normalize = true;
 BasisIn = [];
 Equate = false;
 MultiValue = [];
+Balance = false;
+Prior = false;
 
 %% PASS CONTROL
 for I=1:2:numel(varargin)
     eval([varargin{I} '= varargin{I+1};']);
+end
+
+if Equate
+    Prior = [0.5 0.5];
 end
 
 %% INITIALIZE
@@ -55,7 +61,7 @@ end
 Partition{end} = cat(2,Partition{end},RandIndex(P.*(floor(size(Values,2)./Folds))+1 : end));
 
 % regularization
-TempScore = [];
+PartitionedScore = [];
 
 %% take out the partition and then calculate the decision boundary
 for P = 1:size(Partition,2)
@@ -85,24 +91,15 @@ for P = 1:size(Partition,2)
         end
     elseif strcmp(Model,'Means')
         Basis{P} = nan(size(PartValues,1)+1,1);
-        if ~Equate
-            Basis{P}([true; NotNaN]) = lda(PartValues(NotNaN,:)',-double(PartLabels+1),-1,Reg);
-        else
-            Basis{P}([true; NotNaN]) = lda(PartValues(NotNaN,:)',-double(PartLabels+1),-1,Reg,[0.5 0.5]);
-        end
+        Basis{P}([true; NotNaN]) = lda(PartValues(NotNaN,:)',-double(PartLabels+1),-1,Reg,Prior);
     elseif strcmp(Model,'LDA')
         Basis{P} = nan(size(PartValues,1)+1,1);
-        if ~Equate
-            Basis{P}([true; NotNaN]) = lda(PartValues(NotNaN,:)',-double(PartLabels+1),Normalize,Reg);
-        else
-            Basis{P}([true; NotNaN]) = lda(PartValues(NotNaN,:)',-double(PartLabels+1),Normalize,Reg,[0.5 0.5]);
-        end
+        Basis{P}([true; NotNaN]) = lda(PartValues(NotNaN,:)',-double(PartLabels+1),Normalize,Reg,Prior);
     elseif strcmp(Model,'Regression')
         Basis{P} = nan(size(PartValues,1)+1,1);
         Basis{P}([true; NotNaN]) = -mnrfit(PartValues(NotNaN,:)',PartLabels+1,'Model','hierarchical')';
         %         glmfit(PartValues(NotNaN,:)',PartLabels+1,'binomial')
     end
-    PartitionedBasis(Partition{P},:) = repmat(Basis{P},[1 length(Partition{P})])';
     if ~isempty(MultiValue)
         TempValues = MultiValue(:,Partition{P});
         NotNaN = and(NotNaN, any(~isnan(MultiValue(:,:))')');
@@ -111,7 +108,8 @@ for P = 1:size(Partition,2)
     end
     PartScore = -([ones(size(TempValues(NotNaN,:),2),1) TempValues(NotNaN,:)'] * Basis{P}([true; NotNaN]));
     
-    TempScore(Partition{P},:) = PartScore;
+    PartitionedBasis(Partition{P},:) = repmat(Basis{P},[1 length(Partition{P})])';
+    PartitionedScore(Partition{P},:) = PartScore;
 end
 
 %% for making the 'correct' classifier (i.e., the best)
@@ -134,15 +132,19 @@ Threshold = 0;
 %             end
 %         end
 %     end
-Score = TempScore;
+Score = PartitionedScore;
 
-Labels(isnan(TempScore)) = [];
-TempScore(isnan(TempScore)) = []; % only needed for multivalue i think
+Labels(isnan(PartitionedScore)) = [];
+PartitionedScore(isnan(PartitionedScore)) = []; % only needed for multivalue i think
 
-Class = (sum(double(TempScore(:) < Threshold) .* double(Labels)) ...
-    + sum(double(TempScore(:) >= Threshold) .* double(1 - Labels))) ...
+Class = (sum(double(PartitionedScore(:) < Threshold) .* double(Labels)) ...
+    + sum(double(PartitionedScore(:) >= Threshold) .* double(1 - Labels))) ...
     ./ size(Labels,1);
 
+if Balance
+    Class = ( (sum(double(PartitionedScore(:) < Threshold) .* double(Labels)) ./ sum(Labels==1)) + ...
+        ((sum(double(PartitionedScore(:) >= Threshold) .* double(1 - Labels)) ./ sum(Labels==0))) ) ./2;
+end
 % Class
 %     figure;
 %     plot(TempScore{R})

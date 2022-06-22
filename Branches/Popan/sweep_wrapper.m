@@ -20,27 +20,34 @@ if ReCalc
     [InputTrain] = encode(InputTrain,'SoftFocus',true,'CCD',true,'Folds',1,'Smooth',Smooth,'Equate',Equate);
     [Input] = encode(Input,'SoftFocus',true,'CCD',true,'Stim',true,'Smooth',Smooth,'Equate',Equate);
     [InputTrain] = encode(InputTrain,'SoftFocus',true,'CCD',true,'Stim',true,'Folds',1,'Smooth',Smooth,'Equate',Equate);  
-    GreyLine = {cat(1,InputTrain.Class);cat(1,InputTrain.CueClass);cat(1,InputTrain.StimClass)};
-    RedLine = {cat(1,Input.Class);cat(1,Input.CueClass);cat(1,Input.StimClass)};
+    GreyLine = {cat(1,InputTrain.TaskClass);cat(1,InputTrain.CueClass);cat(1,InputTrain.CueStimulusClass)};
+    RedLine = {cat(1,Input.TaskClass);cat(1,Input.CueClass);cat(1,Input.CueStimulusClass)};
 end
 
 %% get data
 if isstruct(Input)
     % SoftFocus <> Focus
-    [Sweep3{1}, Explanations3{1}] = sweep_decoding(Input,'CCD',false,'Stim',false,...
-        'SoftFocus',true,'Equate',Equate,'Smooth',Smooth,...
-        'SweepCells',true,'SweepExclusion',true,'SweepRaw',true);
+    [Sweep{1}, Explanations{1}] = sweep_decoding(Input,'CCD',false,'Stim',false,...
+        'Focus',true,'Equate',Equate,'Smooth',Smooth,...
+        'SweepCells',false,'SweepExclusion',true,'SweepRaw',true,'DEBUG',false);
     [Sweep{2}, Explanations{2}] = sweep_decoding(Input,'CCD',true,'Stim',false,...
-        'SoftFocus',true,'Equate',Equate,'Smooth',Smooth,...
-        'SweepCells',true,'SweepExclusion',true,'SweepRaw',true);
+        'Focus',true,'Equate',Equate,'Smooth',Smooth,...
+        'SweepCells',false,'SweepExclusion',true,'SweepRaw',true,'DEBUG',false);
     [Sweep{3}, Explanations{3}] = sweep_decoding(Input,'CCD',true,'Stim',true,...
-        'SoftFocus',true,'Equate',Equate,'Smooth',Smooth,...
-        'SweepCells',true,'SweepExclusion',true,'SweepRaw',true);
+        'Focus',true,'Equate',Equate,'Smooth',Smooth,...
+        'SweepCells',false,'SweepExclusion',true,'SweepRaw',true,'DEBUG',false);
 
+%     %DEBUG
+%     figure;Colours;plot(nanmean(Sweep{2}.Raw(:,[1 10 20]),1),'color',Orange);
+%     hold on;plot(nanmean(Sweep{3}.Raw(:,[1 10 20]),1),'color',Silver);
+%     plot(nanmean(Sweep{2}.Exclude(:,[1 50 100]),1),'color',Orange);
+%     plot(nanmean(Sweep{3}.Exclude(:,[1 50 100]),1),'color',Silver);
+%     Ax=  gca; axis([0.75 3.25 0.4 1])
+%     %
     if isempty(RedLine{1})
         RedLine{Fig}{1} = cat(1,Input.Class);
         RedLine{Fig}{2} = cat(1,Input.CueClass);
-        RedLine{Fig}{3} = cat(1,Input.StimClass);
+        RedLine{Fig}{3} = cat(1,Input.CueStimulusClass);
     end
 elseif iscell(Input)
     Sweep{1} = Input{1}{1};

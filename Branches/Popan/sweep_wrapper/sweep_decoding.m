@@ -38,7 +38,7 @@ end
 
 % soft focus
 if SoftFocus
-    DFFs = soft_focus(DFFs,Index);
+    DFFs = soft_focus(DFFs,Index,2);
 %     for Session = 1:length(DFFs)
 %         load(Index(Session).Name,'Trial');
 %         Trial = selector(Trial,'HasFrames','Nignore','NoReset','EitherDB');
@@ -63,9 +63,9 @@ end
 
 %% sweep PC #s on raw
 if SweepRaw
-    for PC = swaparoo({[1:20];[1 5 20]},DEBUG+1)
+    for PC = swaparoo({[1:20];[1 10 20]},DEBUG+1)
         [TempSweep] = encode({DFFs,Trials},'Lag',Lag,'Equate',Equate,'Stim',Stim,...
-            'CCD',CCD,'Model','LDA','PCsRaw',[1:PC],'Iterate',5,'Smooth',Smooth);
+            'CCD',CCD,'Model','LDA','PCsRaw',[1:PC],'Iterate',1,'Smooth',Smooth);
         Sweep.Raw(:,PC) = TempSweep{3};
     end
     for PC = 1:20
@@ -84,7 +84,7 @@ end
 
 %% sweep PC exclusion
 if SweepExclusion
-    for PC = swaparoo({[1:100];[1 100]},DEBUG+1)
+    for PC = swaparoo({[1:100];[1 50 100]},DEBUG+1)
         [TempSweep] = encode({DFFs,Trials},'Lag',Lag,'Equate',Equate,...
             'Stim',Stim,'CCD',CCD,'Model','LDA','PCsExclude',[1:PC],'Iterate',1,'Smooth',Smooth);
         Sweep.Exclude(:,PC) = TempSweep{3};

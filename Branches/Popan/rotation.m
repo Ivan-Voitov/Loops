@@ -38,6 +38,7 @@ else
                         end
                     end
                 catch
+                    X = 1;
                     break
                 end
             end

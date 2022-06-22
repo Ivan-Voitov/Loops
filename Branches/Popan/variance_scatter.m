@@ -18,11 +18,11 @@ end
 
 if ~iscell(Index)
     if DelayResponsive
-        [DFFs,Trials] = rip(Index,'S',swaparoo({'Super';'Context'},CCD+1),'DeNaN','DelayResponsive','Active');
+        [DFFs,Trials] = rip(Index,'S',swap({'Super';'Context'},CCD+1),'DeNaN','DelayResponsive','Active');
     elseif Based
-        [DFFs,Trials] = rip(Index,'S',swaparoo({'Super';'Context'},CCD+1),'DeNaN','Active','NoStimulusResponsive'); 
+        [DFFs,Trials] = rip(Index,'S',swap({'Super';'Context'},CCD+1),'DeNaN','Active','NoStimulusResponsive'); 
     else
-        [DFFs,Trials] = rip(Index,'S',swaparoo({'Super';'Context'},CCD+1),'DeNaN','Active');
+        [DFFs,Trials] = rip(Index,'S',swap({'Super';'Context'},CCD+1),'DeNaN','Active');
     end
 else
     DFFs = Index{1}; Trials = Index{2};
@@ -53,7 +53,7 @@ for Session = 1:length(DFFs)
 
 %     min(Activities)
     
-    Labels = destruct(Trials{Session},swaparoo({'Task';'Block'},CCD+1)); % 1 is mem 2 is dis
+    Labels = destruct(Trials{Session},swap({'Task';'Block'},CCD+1)); % 1 is mem 2 is dis
 %     if Session > 1; TempSize = size(Activity.Normal,1); else; TempSize = 0 ; end
     [Activity] = context_activity(Activities,Labels,Activity,'Threshold',Threshold); % n = cells
     

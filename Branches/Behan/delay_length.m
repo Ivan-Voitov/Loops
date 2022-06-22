@@ -39,7 +39,9 @@ for J = 1:(Flag+1)
     catch
        DelayLine = destruct(Trial,'DelayLine'); 
     end
-    DelayLine = DelayLine - min(DelayLine) + 1;
+    
+    DelayLine(DelayLine < swap([min(DelayLine) 54],(min(DelayLine)<40)+1)) = nan;
+    DelayLine = DelayLine - swap([min(DelayLine) 54],(min(DelayLine)<40)+1) + 1;
     DelayLine(DelayLine > Duration) = nan;
     % mice names
     try
@@ -662,10 +664,10 @@ for I = ToDo2
         Colour = Red;
     end
     if ~Split
-    if J == 2 || (~Flag)
+%     if J == 2 || (~Flag)
         fill([XRange XRange(end:-1:1)], [CIAll(I,:,1) CIAll(I,end:-1:1,2)],Colour,...
             'EdgeColor','none','FaceAlpha',0.2);
-    end
+%     end
     plot(XRange,PerfAll(I,:)','Color',Colour,'LineWidth',2,'LineStyle','--');
     else
         for Mouse = 1:size(PerfSplit,2)

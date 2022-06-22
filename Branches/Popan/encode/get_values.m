@@ -1,5 +1,5 @@
-function [Values] = get_values(Activities,Clever,Five,DePre,Range,ValuesIn,PCsCloud,Cells)
-
+function [Values,Explanations] = get_values(Activities,Clever,Five,DePre,Range,ValuesIn,Iterate,PCsCloud,Cells,RNG)
+Explanations = [];
 
 %% get values after threshold
 if Clever
@@ -8,6 +8,7 @@ if Clever
         Activities(:,:,T) = Activities(:,:,T) - MeanActivities;
     end
 end
+rng(RNG);
 
 if Five
     for Iter = 1:Iterate

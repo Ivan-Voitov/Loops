@@ -79,20 +79,20 @@ end
 for IndexType = 1:2
     figure;
     for CellType = 1:2
-        %                 swaparoo({-1:1:frame(3200,FPS)+1;-1:1:frame(2000,FPS)+1},CellType)
+        %                 swap({-1:1:frame(3200,FPS)+1;-1:1:frame(2000,FPS)+1},CellType)
         
         subplot(1,2,CellType);
         TempIndex = Indicies{CellType,IndexType};
-        histogram(Numbers{CellType}(TempIndex == 1),swaparoo({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType),'Normalization','probability','FaceColor',Blue,'EdgeColor','none')
+        histogram(Numbers{CellType}(TempIndex == 1),swap({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType),'Normalization','probability','FaceColor',Blue,'EdgeColor','none')
         hold on;
-        histogram(Numbers{CellType}(TempIndex == 2),swaparoo({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType),'Normalization','probability','FaceColor',Red,'EdgeColor','none')
+        histogram(Numbers{CellType}(TempIndex == 2),swap({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType),'Normalization','probability','FaceColor',Red,'EdgeColor','none')
         title(Titles{CellType});
         Ax = gca;
         %         Ax.XTick = [-5 max(Numbers{CellType})];
         %          Ax.XLim = [-5 max(Numbers{CellType})];
-        %         Ax.XTick = [min(swaparoo({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType)):2:max(swaparoo({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType))];
+        %         Ax.XTick = [min(swap({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType)):2:max(swap({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType))];
         Ax.XTick = [];
-        Ax.XLim = [min(swaparoo({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType)) max(swaparoo({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType))];
+        Ax.XLim = [min(swap({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType)) max(swap({-1.5:2:frame(3200,FPS)+3.5;-1:2:frame(2000,FPS)+3.5},CellType))];
         %         Ax.XTickLabel = round(Ax.XTick .* 1000/FPS);
         
         %         if IndexType == 1

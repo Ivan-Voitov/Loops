@@ -28,10 +28,11 @@ if ~isempty(DFFsIn) && Z == 'Z'; Z = true;end
 if ~exist('Traces','var')
     for CellType = 1:length(Types)
         if ~isempty(DFFsIn)
-            [~,Trials,Ripped{CellType}] = rip(Index,S,Z,'Active',swaparoo({'Super';'Hyper'},CellType),'DeNaN',Types{CellType},'Beh'); % can't beh here because need to get ripped
+            [~,Trials,Ripped{CellType}] = rip(Index,S,Z,'Active',swap({'Super';'Hyper'},CellType),'DeNaN',Types{CellType},'Beh'); % can't beh here because need to get ripped
             DFFs = DFFsIn;
         else
-            [DFFs,Trials,Ripped{CellType}] = rip(Index,S,Z,'Active',swaparoo({'Super';'Hyper'},CellType),'DeNaN',Types{CellType});
+            [DFFs,Trials,Ripped{CellType}] = rip(Index,S,Z,'Active',swap({'Super';'Hyper'},CellType),'DeNaN',Types{CellType});
+%             [DFFs,Trials,Ripped{CellType}] = rip(Index,S,Z,'Active',swap({'SuperO';'HyperO'},CellType),'DeNaN',Types{CellType});
         end
         if OnlyEven
             for Session = 1:length(Trials); Trials{Session} = Trials{Session}(2:2:end); end

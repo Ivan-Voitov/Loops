@@ -1,5 +1,8 @@
 function [ShiftedLabels] = shift_labels(Labels,varargin)
 %
+
+rng(111);
+
 if strcmp(varargin,'Random')
     Mode = 2;
 else
@@ -13,19 +16,18 @@ end
 
 % correct for nans
 % if sum(isnan(Labels)) ~= 0
-%     TempLabels = Labels;
-%     for I = 2:length(TempLabels)
-%         if isnan(TempLabels(I))
-%             TempLabels(I) = TempLabels(I-1);
+%     Labels = Labels;
+%     for I = 2:length(Labels)
+%         if isnan(Labels(I))
+%             Labels(I) = Labels(I-1);
 %         end
 %     end
 % else
-%     TempLabels = Labels;
+%     Labels = Labels;
 % end
-
 if Mode == 1 % half-way through next
-    [Ind,~,Value] = find(diff(TempLabels));
-    Ind(end+1) = length(TempLabels);
+    [Ind,~,Value] = find(diff(Labels));
+    Ind(end+1) = length(Labels);
     Value(end+1) = -sign(Value(end));
     I = 0;
     II = 1;

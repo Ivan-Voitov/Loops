@@ -1,7 +1,7 @@
 if ~isempty(PCsCloud)
     TempRemove = all(isnan(Values)');
     if size(Values(~TempRemove,:),1) < length(PCsCloud); TempPCsCloud = PCsCloud(1:size(Values(~TempRemove,:),1)); else TempPCsCloud = PCsCloud; end
-    [TempData,~,~,~,Explanations{Session}] = pca(Values(~TempRemove,:)','numcomponents',max(TempPCsCloud));
+    [TempData,~,~,~,Explanations] = pca(Values(~TempRemove,:)','numcomponents',max(TempPCsCloud));
     Values = (Values(~TempRemove,:)' * TempData)';
 end
 
@@ -14,7 +14,7 @@ if ~isempty(Cells)
     try
         TotalVar = nansum(nansum((Values - nanmean(Values,2)).^2));
         CellVar = nansum(nansum((Values(Cells,:) - nanmean(Values(Cells,:),2)).^2));
-        Explanations{Session} = CellVar / TotalVar;
+        Explanations = CellVar / TotalVar;
         Values = Values(Cells,:);
         Activities = Activities(Cells,:,:);
     catch
@@ -22,7 +22,7 @@ if ~isempty(Cells)
         Scores{Session} = nan;
         Classes(Session) = nan;
         Traces{Session} = nan;
-        Explanations{Session} = nan;
+        Explanations = nan;
         Skip = true;
     end
 end

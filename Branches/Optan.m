@@ -41,7 +41,7 @@ Areas = {'AM';'M2';'S1';'V1';'iAM';'iM2'};
 C = 1;
 for Area = 1:6
     R = 1;
-    for Stimulus = 1:3; for Time = 1:2; for Task = 1:2;
+    for Stimulus = 1:3; for Time = 1:2; for Task = 1:2
        TableSig(R,C) = Stat.Light{Time}{Area+2}(Task,Stimulus);
        R = R + 1;
     end; end; end
@@ -50,13 +50,26 @@ end
 uitable('Data',TableSig,'ColumnName',Areas,'ColumnWidth',{80;80;80;80;80;80}','ColumnFormat',{'short e';'short e';'short e';'short e';'short e';'short e'}','Position',[20 20 800 300]);
 saveas(gcf,'Plots/Optan/Full bar table.pdf');
 
-%% L.F.R.
+% R3 - brains split by delay time
+brain_plot(Trial(destruct(Trial,'Trigger.Stimulus.Time')<1667),2,'Amp',1.25); %% 1.25 == 40% (is the +/- max)
+brain_plot(Trial(destruct(Trial,'Trigger.Stimulus.Time')>=1667),2,'Amp',1.25); %% 1.25 == 40% (is the +/- max)
+% brain_plot(Trial(and((destruct(Trial,'Trigger.Stimulus.Time')>=1667),destruct(Trial,'Trigger.Stimulus.Time')<=3267)),2,'Amp',1.25); %% 1.25 == 40% (is the +/- max)
+
+%% MISC
 % recoveringness
-delay_length(selector(Trial,'Post','NoReset','NoLight'),selector(Trial,'Post','NoReset','AM','EarlyDelayOnset','Light'),'ToPlot',[1 4],'BinSize',2,'PerfType','Correct','Fit',0,'Inset',false,'Tom',false,'Truncate',800);
-delay_length(selector(Trial,'Post','NoReset','NoLight'),selector(Trial,'Post','NoReset','M2','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',3,'PerfType','Response','Fit',0,'Inset',false,'Tom',true,'Truncate',800);
+delay_length(selector(Trial,'Post','NoReset','NoLight'),selector(Trial,'Post','NoReset','AM','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',2,'PerfType','Performance','Fit',1,'Inset',false,'Tom',true,'Truncate',800);
+delay_length(selector(Trial,'Post','NoReset','NoLight'),selector(Trial,'Post','NoReset','M2','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',2,'PerfType','Performance','Fit',1,'Inset',false,'Tom',true,'Truncate',800);
+
+% bilat not recovery!
+delay_length(selector(Trial,'Post','NoReset','NoLight','BiSet'),selector(Trial,'Post','NoReset','bM2','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',2,'PerfType','Response','Fit',1,'Inset',false,'Tom',true,'Truncate',800);
+
+% for some reason syn silencing is recovering
+delay_length(selector(Trial,'Post','NoReset','NoLight','SynSet'),selector(Trial,'Post','NoReset','AM+M2','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',2,'PerfType','Response','Fit',1,'Inset',false,'Tom',true,'Truncate',800);
+delay_length(selector(Trial,'Post','NoReset','NoLight','SynSet'),selector(Trial,'Post','NoReset','M2+S1','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',2,'PerfType','Response','Fit',1,'Inset',false,'Tom',true,'Truncate',800);
+delay_length(selector(Trial,'Post','NoReset','NoLight','SynSet'),selector(Trial,'Post','NoReset','S1+AM','EarlyDelayOnset','Light'),'ToPlot',[1:6],'BinSize',2,'PerfType','Response','Fit',1,'Inset',false,'Tom',true,'Truncate',800);
 
 % 6 full bars 3 times
-Stat = opto_bar(Trial,'Areas',[{'AM'}; {'M2'}; {'S1'}; {'V1'}; {'iAM'}; {'iM2'}],'TwoTime',true,'EnMouse',false);
+Stat = opto_bar(Trial,'Areas',[{'AM'}; {'M2'}; {'S1'}; {'V1'}; {'iAM'}; {'iM2'}],'TwoTime',false,'EnMouse',false);
 saveas(gcf,'Plots/Optan/full bar.pdf');
 Areas = {'AM';'M2';'S1';'V1';'iAM';'iM2'};
 Times = {'Delay','Stimulus'};
@@ -88,6 +101,12 @@ Stat = opto_bar(Trial(Sel),'Areas',[{'AM'}; {'M2'}],'EnMouse',false);
 suptitle('Following > 4 Cues')
 
 % does it change rxn times?
-rxn_time(selector(Trial,'Post','NoReset','NoLight','NoMaskOn2'),0)
-rxn_time(selector(Trial,'Post','NoReset','Light','EarlyDelayOnset','AM'),0)
-rxn_time(selector(Trial,'Post','NoReset','Light','EarlyDelayOnset','M2'),0)
+rxn_time(selector(Trial,'Post','NoReset','NoLight','NoMaskOn2'),0,'EnMouse',true)
+rxn_time(selector(Trial,'Post','NoReset','Light','EarlyDelayOnset','AM'),0,'EnMouse',true)
+rxn_time(selector(Trial,'Post','NoReset','Light','EarlyDelayOnset','M2'),0,'EnMouse',true)
+rxn_time(selector(Trial,'Post','NoReset','Light','StimulusOnset','AM'),0,'EnMouse',true)
+rxn_time(selector(Trial,'Post','NoReset','Light','StimulusOnset','M2'),0,'EnMouse',true)
+
+% all my data
+opto_bar(Trial,'Areas',[{'AM'}; {'M2'}; {'S1'}; {'V1'}; {'iAM'}; {'iM2'};...
+    {'bi AM'}; {'bi M2'}; {'bi S1'}; {'AM+M2'}; {'M2+S1'}; {'S1+AM'}],'TwoTime',false,'EnMouse',false);

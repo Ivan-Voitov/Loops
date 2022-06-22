@@ -4,6 +4,7 @@ MeanSubtract = false;
 
 Space = 'PCA';
 Plot = true;
+Statistics = true;
 Folds = 1;
 Dimensions = 3;
 Simultaneous = true;
@@ -19,6 +20,8 @@ EquatePass = [];
 % new
 CCD = false;
 
+SessionBased = true;
+
 %% PASS ARGUMENTS TO CONTROLS
 for I=1:2:numel(varargin)
     eval([varargin{I} '= varargin{I+1};']);
@@ -33,9 +36,7 @@ end
 if Focus
     Focus = 'Focus';
 end
-% if Equate
-%    EquatePass = 'Equate'; 
-% end
+
 if ~CCD
     [DFFs,Trials] = rip(Index,S,'Hyper','DeNaN','Active',Focus,Triggerable,EquatePass,'DeNaN');
 else
@@ -70,8 +71,6 @@ if ~Simultaneous
 else
     [Projections,Explanations] = projectorize(DFFs,Trials,...
         Space,'Simultaneous',true,'Folds',Folds,'Dimensions',Dimensions,'Equate',Equate,'CCD',CCD);
-    %     [Projections,Explanations] = projectorize(DFFs,Trials,...
-    %         Space,'Simultaneous',true,'Folds',Folds,'Dimensions',Dimensions);
 end
 
 if Normalize
@@ -82,86 +81,73 @@ if Normalize
     end
 end
 
-%% get statistic
-for Session = 1:length(Index)
-    % reorganize projections to trial-averagable
-%     load(Index(Session).Name,'Trial');
-%     Trial = selector(Trial,Index(Session).Combobulation,'NoReset','HasFrames','Post','Nignore','Cue');
-    Onsets = destruct(Trials{Session},'Trigger.Stimulus.Frame') - destruct(Trials{Session},'Trigger.Delay.Frame');
-    TempAvg = Projections{Session};
-    for III = 1:size(TempAvg,3)
-        TempAvg(:,frame(3200)+1:frame(5200),III) = TempAvg(:,Onsets(III)+1:Onsets(III)+frame(2000),III);
-        TempAvg(:,Onsets(III)+1:frame(3200),III) = nan;
-    end
-    TempAvg(:,frame(5200)+1:end,:) = [];
-    
-    % discrimination of task over time
-    if ~CCD
-        Labels = 3 - destruct(Trials{Session},'Task');
+%% plot for all trajectories, and average across sessions?
+if Plot
+    if Simultaneous
+        trajectorize(Projections,Trials,'Average',true,'Explanations',Explanations,'Dim',Dimensions,...
+            'CCD',CCD);
     else
-        Labels = destruct(Trials{Session},'Block') + 1;
+        trajectorize(Projections,Trials,'Average',false,'Explanations',Explanations,'Dim',Dimensions,...
+            'CCD',CCD);
     end
-    if Equate
-        TempLabels = Labels;
-        [A,B] = min([sum(TempLabels==1) sum(TempLabels==2)]);
-        TempReplace = cat(1,repmat((3-B),[A 1]), nan(sum(TempLabels==(3-B))-A,1));
-        TempLabels(TempLabels==(3-B)) = TempReplace(randperm(length(TempReplace)));
-        Labels = TempLabels;
-    end
-    
-    for Dim = 1:size(TempAvg,1)
-        for II = 1:size(TempAvg,2)
-            %             TempLabels = Labels(~isnan(squeeze(TempAvg(Dim,II,:))));
-            Statistic{Session,1,1}(:,Dim,II) = squeeze(TempAvg(Dim,II,Labels==1));
-            Statistic{Session,2,1}(:,Dim,II) = squeeze(TempAvg(Dim,II,Labels==2));
-            if Simultaneous
-                for Shuff = 1:50
-                    if Equate
-                        TempLabels = Labels;
-                        [A,B] = min([sum(TempLabels==1) sum(TempLabels==2)]);
-                        TempReplace = cat(1,repmat((3-B),[A 1]), nan(sum(TempLabels==(3-B))-A,1));
-                        TempLabels(TempLabels==(3-B)) = TempReplace(randperm(length(TempReplace)));
-                        Labels = TempLabels;
+end
+
+%% get statistic
+if Statistics
+    rng(10)
+    for Session = 1:length(Index)
+        Onsets = destruct(Trials{Session},'Trigger.Stimulus.Frame') - destruct(Trials{Session},'Trigger.Delay.Frame');
+        TempAvg = Projections{Session};
+        for III = 1:size(TempAvg,3)
+            TempAvg(:,frame(3200)+1:frame(5200),III) = TempAvg(:,Onsets(III)+1:Onsets(III)+frame(2000),III);
+            TempAvg(:,Onsets(III)+1:frame(3200),III) = nan;
+        end
+        TempAvg(:,frame(5200)+1:end,:) = [];
+        
+        % discrimination of task over time
+        if ~CCD
+            Labels = 3 - destruct(Trials{Session},'Task');
+        else
+            Labels = destruct(Trials{Session},'Block') + 1;
+        end
+        if Equate
+            TempLabels = Labels;
+            [A,B] = min([sum(TempLabels==1) sum(TempLabels==2)]);
+            TempReplace = cat(1,repmat((3-B),[A 1]), nan(sum(TempLabels==(3-B))-A,1));
+            TempLabels(TempLabels==(3-B)) = TempReplace(randperm(length(TempReplace)));
+            Labels = TempLabels;
+        end
+        
+        % remove temp avg which is not in labels and remove labels nans
+        TempAvg(:,:,isnan(Labels)) = [];
+        Labels(isnan(Labels)) = [];
+        
+        for Dim = 1:size(TempAvg,1)
+            
+            for II = 1:size(TempAvg,2)
+                Statistic{Session,1,1}(:,Dim,II) = squeeze(TempAvg(Dim,II,Labels==1));
+                Statistic{Session,2,1}(:,Dim,II) = squeeze(TempAvg(Dim,II,Labels==2));
+                if Simultaneous
+                    if SessionBased
+                        TempLabels = shift_labels(Labels,'Halfway');
+                        Statistic{Session,1,2}(:,Dim,II) = squeeze(TempAvg(Dim,II,TempLabels==1));
+                        Statistic{Session,2,2}(:,Dim,II) = squeeze(TempAvg(Dim,II,TempLabels==2));
+                    else
+                        for Shuff = 1:100 % number of times to shuffle
+                            % control for drift
+                            % shift (slow temporal factors control)
+                            Labels = shift_labels(Labels,'Random');
+                            Statistic{Session,1,Shuff+1}(:,Dim,II) = squeeze(TempAvg(Dim,II,Labels==1));
+                            Statistic{Session,2,Shuff+1}(:,Dim,II) = squeeze(TempAvg(Dim,II,Labels==2));
+                        end
                     end
-                    
-                    % TempLabels = Labels(randperm(length(Labels)));
-                    % control for drift
-                    TempLabels = shift_labels(Labels,'Random');
-                    Statistic{Session,1,Shuff+1}(:,Dim,II) = squeeze(TempAvg(Dim,II,TempLabels==1));
-                    Statistic{Session,2,Shuff+1}(:,Dim,II) = squeeze(TempAvg(Dim,II,TempLabels==2));
                 end
             end
         end
     end
+
+
+    decode_over_time(Statistic,3+SessionBased);
+
 end
 
-% ShuffleSig = reshape(ShuffleSig,[],1);
-% for X = 1:length(ShuffleSig)
-%    Z(1,:,X) = ShuffleSig{X}(1,:);
-%    Z(2,:,X) = ShuffleSig{X}(2,:);
-%    Z(3,:,X) = ShuffleSig{X}(3,:);
-% end
-% figure;plot(nanmean(nanmean(Z,3)',2));
-%
-% for X = 1:length(Sig)
-%    Y(1,:,X) = Sig{X}(1,:);
-%    Y(2,:,X) = Sig{X}(2,:);
-%    Y(3,:,X) = Sig{X}(3,:);
-% end
-% hold on;plot(nanmean(nanmean(Y,3)',2));
-% hold on;plot(nanmean(nanmean(Y,3)',2));
-
-%% plot for all trajectories, and average across sessions?
-if Plot
-    %     Temp = cell2mat(Explanations(1:end-1));
-    %     Temp = [nanmean(Temp(:,1:2:end),2) nanmean(Temp(:,1:2:end),2)];
-    %     Explanations{end}
-    if Simultaneous
-        trajectorize(Projections,Trials,'Average',true,'Explanations',Explanations,'Dim',Dimensions,'Statistic',Statistic,...
-            'CCD',CCD);
-    else
-        trajectorize(Projections,Trials,'Average',false,'Explanations',Explanations,'Dim',Dimensions,'Statistic',Statistic,...
-            'CCD',CCD);
-        %     trajectorize(Projections(1:end-1),Trials(1:end-1),'Average',true,'Explanations',Temp,'Dim',Dimensions,'Statistic',Statistic{1});
-    end
-end

@@ -1,6 +1,5 @@
-function [BehRecovery] = recoveringness2(Trial,NeuralRecovery,varargin)
+function [BehRecovery] = recoveringness(Trial,NeuralRecovery,varargin)
 Window = 1600;
-Pool = 'All';
 IndexType = 1;
 
 for I = 1:2:numel(varargin)
@@ -11,77 +10,72 @@ for I = 1:2:numel(varargin)
 end
 
 %% fill in the behavioural data
-if isstruct(Trial) || iscell(Trial) % not sped up
-    % do reso as well?
-    if iscell(Trial)
-        for Area = 1:2
-            TempTrial{1} = selector(Trial{Area+1},'Post','NoReset','NoLight');
-            TempTrial{2} = selector(Trial{Area+1},'Post','NoReset','Light');
-            for LightStatus = 1:2
-                TimeBin = (destruct(TempTrial{LightStatus},'Trigger.Stimulus.Time')>Window)+1;
-                if ~strcmp(Pool,'All')
-                    % get session/mouse and time vectors
-                    [PoolName] = get_pool_names(TempTrial{LightStatus},Pool);
-                    
-                    % get stats
-                    for Time = 1:2
-                        for P = 1:length(unique(PoolName))
-                            Responses = destruct(TempTrial{LightStatus}(and(PoolName==P,(TimeBin == Time)')),'ResponseType');
-                            BehRecovery{Area}(Time,LightStatus,P) = sum(or(Responses == 1,Responses==4)) ./ length(Responses);
+% reso + opto?
+if iscell(Trial) % receives AM and M2 cells
+    for Area = 1:2
+%         TempTrial{1} = selector(Trial{Area},'NotProbe','Post','NoReset','NoLight');
+%         TempTrial{2} = selector(Trial{Area},'NotProbe','Post','NoReset','Light');
+        TempTrial{1} = selector(Trial{Area},'NoLight');
+        TempTrial{2} = selector(Trial{Area},'Light');
+        Remove = false(length(TempTrial{1}),1);
+        
+        % re-envariable all the struct information
+        for LightStatus = 1:2
+            for K = 1:length(TempTrial{1})
+                try
+                    Timez = destruct(TempTrial{LightStatus}{K},'Trigger.Stimulus.Time') >= Window;
+                catch
+                    Remove(K) = true;
+                end
+                for Time = 1:2
+                    try
+                        TempTempTrial = TempTrial{LightStatus}{K}(swap({~Timez; Timez},Time));
+
+                        Responses = destruct(TempTempTrial,'ResponseType');
+                        
+                        BehRecovery{Area}(Time,LightStatus,K) = sum(or(Responses == 1,Responses==4)) ./ length(Responses);
+                        if isnan(BehRecovery{Area}(Time,LightStatus,K))
+                            Remove(K) = true;
                         end
-                    end
-                    NumPooled(Area) = size(BehRecovery{Area},3);
-                elseif strcmp(Pool,'All')
-                    for Time = 1:2
-                        Responses = destruct(TempTrial{LightStatus}(TimeBin == Time),'ResponseType');
-                        BehRecovery{Area}{Time,LightStatus} = or(Responses == 1,Responses==4);
+                    catch
+                        Remove(K) = true;
                     end
                 end
             end
         end
-        
-        % remove the raw data
-        Trial = Trial{1};
-        
-    else
-        NumPooled(1) = 0; NumPooled(2) = 0;
+        BehRecovery{Area}(:,:,Remove) = [];
     end
     
+else % just opto      
     TempTrial{1} = selector(Trial,'Post','NoReset','NoLight');
+
     for Area = 1:2
+        clearvars PoolNames
         TempTrial{2} = selector(Trial,'Post','NoReset',swaparoo({'M2';'AM'},Area),'EarlyDelayOnset','Light');
+        
+        % get session numbers
+        for Tr = 1:length(TempTrial{1})
+            TempName{Tr} = TempTrial{1}(Tr).FileName;
+        end
+        TempNames = unique(TempName);
+        for LightStatus = 1:2
+            for Tr = 1:length(TempTrial{LightStatus})
+                PoolNames{LightStatus}(Tr) = find(strcmp(TempTrial{LightStatus}(Tr).FileName,TempNames));
+            end
+        end
+        
         for LightStatus = 1:2
             TimeBin = (destruct(TempTrial{LightStatus},'Trigger.Stimulus.Time')>Window)+1;
-            if ~strcmp(Pool,'All')
-                [PoolName] = get_pool_names(TempTrial{LightStatus},Pool);
-                
-                for Time = 1:2
-                    for P = 1:length(unique(PoolName))
-                        Responses = destruct(TempTrial{LightStatus}(and(PoolName==P,(TimeBin == Time)')),'ResponseType');
-                        BehRecovery{Area}(Time,LightStatus,P+NumPooled(Area)) = sum(or(Responses == 1,Responses==4)) ./ length(Responses);
-                    end
-                end
-            elseif strcmp(Pool,'All')
-                for Time = 1:2
-                    Responses = destruct(TempTrial{LightStatus}(TimeBin == Time),'ResponseType');
-                    try
-                        BehRecovery{Area}{Time,LightStatus} =  cat(1,BehRecovery{Area}{Time,LightStatus}, or(Responses == 1,Responses==4));
-                    catch
-                        BehRecovery{Area}{Time,LightStatus} =  or(Responses == 1,Responses==4);
-                    end
+            
+            for Time = 1:2
+                for P = 1:length(unique(PoolNames{1}))
+                    Responses = destruct(TempTrial{LightStatus}(and(PoolNames{LightStatus}==P,(TimeBin == Time)')),'ResponseType');
+                    BehRecovery{Area}(Time,LightStatus,P) = sum(or(Responses == 1,Responses==4)) ./ length(Responses);
                 end
             end
         end
     end
-else
-    BehRecovery = Trial; % vecotr for speed
 end
-
-% early/late Off/on Disc/mem sessions
-% for A = 1:2
-% BehRecovery{A} = nanmean(BehRecovery{A},4)
-% NeuralRecovery{A} = nanmean(NeuralRecovery{A},4)
-% end
 
 %% get indices and statistics
 for Area = 1:2
@@ -129,8 +123,8 @@ for Area = 1:2
             hold on;
         end
         % test is not sign rank!
-        P1 = ranksum(squeeze(BehRecovery{3-Area}(1,1,IsNotNaN)),squeeze(BehRecovery{3-Area}(1,2,IsNotNaN)));
-        P2 = ranksum(squeeze(BehRecovery{3-Area}(2,1,IsNotNaN)),squeeze(BehRecovery{3-Area}(2,2,IsNotNaN)));
+        [~,P1] = ttest(squeeze(BehRecovery{3-Area}(1,1,IsNotNaN)),squeeze(BehRecovery{3-Area}(1,2,IsNotNaN)));
+        [~,P2] = ttest(squeeze(BehRecovery{3-Area}(2,1,IsNotNaN)),squeeze(BehRecovery{3-Area}(2,2,IsNotNaN)));
         text(1,M1(1) + 0.05,decell(strcat({'p = '},num2str(P1))))
         text(2,M2(1) + 0.05,decell(strcat({'p = '},num2str(P2))))
     else
@@ -154,9 +148,6 @@ for Area = 1:2
     Ax.YTick = [0.5 1];
     Ax.YTickLabels = {'50%';'100%'};
 end
-
-% EXCLUDES (sum(2-IsNotNaN)) SESSIONS !!!
-
 
 %% plot main
 figure;
@@ -184,6 +175,7 @@ catch
     Ax.YTick = [Ax.YLim(1) Ax.YLim(2)];
 end
 % legend({'M2 Discrimination';'M2 ';'';''})
+axis([-0.2 0.2 -0.2 0.2])
 
 %%
 function [PoolName] = get_pool_names(Trial,Pool)

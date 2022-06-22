@@ -1,29 +1,37 @@
 function [Sig] = decoding_behaviour(Index,varargin)
 FPS = 4.68;
-Window = [0 3200]; % first term is the pre
 CCD = false;
-
-
+DistractorEncoding = false;
+% controls
 Avg = false;
 PC1 = false;
-
+Alt = false;
+% takes a long time to calc and not relevant
 ROC = false;
-Control = false;
+
+% only used for controls. first term is the pre
+Window = [0 3200]; 
+
+% Control = false;
 
 %% PASS CONTROL
 for I=1:2:numel(varargin)
     eval([varargin{I} '= varargin{I+1};']);
 end
 
+% if DistractorEncoding
+%     Index = (Inderescorex);
+% end
+
 %% collect data
-    if Avg || PC1
-        [DFFs,~] = rip(Index,'S','DeNaN','Active');
-    end
+if Avg || PC1
+    [DFFs,~] = rip(Index,'S','DeNaN','Active');
+end
 for Session = 1:length(Index)
     % I have to use sel because some NaN (e.g., end of 4th session) of
     % score is because of nan of DFF, which is not HasFrame'd because that
     % only looks at limits of dff, not if full trial is nan'd.
-
+    
     Loaded = load(Index(Session).Name,'Trial');
     if CCD
         % unfuck this, i can 'beh' rip
@@ -40,11 +48,14 @@ for Session = 1:length(Index)
         [Trials{Session},Sel] = selector(Trial,'NoReset','HasFrames','Nignore','Post');
     else
         Trial = Loaded.Trial;
+        if DistractorEncoding && Alt           
+            Index(Session).Combobulation = or(Index(Session).Combobulation,destruct(Trial,'Task')==2);
+        end
         [Trials{Session},Sel] = selector(Trial,Index(Session).Combobulation,'NoReset','HasFrames','Post','Nignore'); % no reason not to analyze trials
     end
     
     if ~Avg && ~PC1
-        if ~CCD
+        if ~CCD && ~DistractorEncoding
             Scores{Session} = Index(Session).Score(Sel);
         else
             Scores{Session} = Index(Session).CueScore(Sel);
@@ -53,11 +64,11 @@ for Session = 1:length(Index)
         TrigOn = destruct(Trial,'Trigger.Delay.Frame');
         TrigOff = destruct(Trial,'Trigger.Stimulus.Frame');
         if Avg
-            AvgActivity = squeeze(nanmean(wind_roi(nanmean(DFFs{Session},1),{TrigOn;TrigOff},'Window',[0 frame(3200,FPS)]),2));
+            AvgActivity = squeeze(nanmean(wind_roi(nanmean(DFFs{Session},1),{TrigOn;TrigOff},'Window',frame(Window,FPS)),2));
             Scores{Session} = AvgActivity(Sel);
         elseif PC1
             PCd = pca(DFFs{Session}(:,~isnan(DFFs{Session}(1,:))));
-            AvgActivity = squeeze(nanmean(wind_roi(PCd(:,1)',{TrigOn;TrigOff},'Window',[0 frame(3200,FPS)]),2));
+            AvgActivity = squeeze(nanmean(wind_roi(PCd(:,1)',{TrigOn;TrigOff},'Window',frame(Window,FPS)),2));
             Scores{Session} = AvgActivity(Sel);
         end
     end
@@ -72,14 +83,15 @@ if ROC
     end
     % low dim contrast
     for Session = 1:length(Index)
-        Traces{Session} = Index(Session).(swaparoo({'Trace';'CueTrace'},CCD+1));
-%         LowDimTraces{Session} = Index(Session).AvgTrace;
+        Traces{Session} = Index(Session).(swap({'Trace';'CueTrace'},CCD+1));
+        %         LowDimTraces{Session} = Index(Session).AvgTrace;
         
         % Crossed PCA
         [~,LowDimTraces{Session}] = pca(DFFs{Session}','numcomponents',1); %not cross val'd
         TrigOn = destruct(Trials{Session},'Trigger.Delay.Frame');
         TrigOff = destruct(Trials{Session},'Trigger.Stimulus.Frame');
         for C = 1:2
+            
             TempDFF = nan(size(DFFs{Session}));
             for Tr= C:2:length(TrigOn)
                 TempDFF(:,TrigOn(Tr):TrigOff(Tr)) = DFFs{Session}(:,TrigOn(Tr):TrigOff(Tr));
@@ -89,32 +101,58 @@ if ROC
                 LowDimTraces{Session}(TrigOn(Tr):TrigOff(Tr)) = DFFs{Session}(:,TrigOn(Tr):TrigOff(Tr))' * TempBasis;
             end
         end
-        if Control
-            for Tr = 1:length(TrigOn)
-                Scores{Session}(Tr) = nanmean(LowDimTraces{Session}(TrigOn(Tr):TrigOff(Tr))); 
-            end
-        end
+        %         if Control
+        %             for Tr = 1:length(TrigOn)
+        %                 Scores{Session}(Tr) = nanmean(LowDimTraces{Session}(TrigOn(Tr):TrigOff(Tr)));
+        %             end
+        %         end
     end
 end
 
-if Control
+% if Control
+%
+% end
 
-end
-
-%% define contrasts and calculate numbers 
+%% define contrasts and calculate numbers
 % name here to edit faster
 XPairs ={{'CR';'FA'};{'Correct';'Incorrect'};{'Short delay';'Long delay'};{'<5 Cues';'>=5 Cues'}};
 XPairs = XPairs([1 4]);
-Point2 = cell(length(XPairs),2-CCD,2); % cat across sessions
+PooledAccuracy = cell(length(XPairs),2-CCD,2); % cat across sessions
 for Session = 1:length(Trials)
     Trial = Trials{Session};
     Score = Scores{Session};
-    
-    if ~CCD
+    Zcore = -zscore(Score,[],'omitnan');
+      
+    if ~CCD && ~DistractorEncoding
         TaskLabels = 3 - destruct(Trial,'Task');
         Score(TaskLabels == 2) = -Score(TaskLabels==2); % fliparooni
+    elseif DistractorEncoding
+        % flip +15 deg WM cues
+        if Trial(find(destruct(Trial,'Task')==1,1)).Block == 1
+            Score = -Score;
+        end
+%         % flip +15 deg Discrimination cues
+%         TempSelect = and(destruct(Trial,'Task')==2,destruct(Trial,'DB')==15);
+%         Score(TempSelect) = -Score(TempSelect);
+        
+        % flip the corresponding Discrimination task cues
+        TempDB = Trial(find(destruct(Trial,'Task')==1,1)).DB;
+        Score(and(destruct(Trial,'Task')==2,destruct(Trial,'DB')==TempDB)) = ...
+            -Score(and(destruct(Trial,'Task')==2,destruct(Trial,'DB')==TempDB));
+        
+        
+%         Score(destruct(Trial,'Task')==2) = -Score(destruct(Trial,'Task')==2);
+%         TempSelect = and(destruct(Trial,'Task')==1,destruct(Trial,'Block')==1);
+%         Score(TempSelect) = -Score(TempSelect);
+%         % maybe should be -15
+
+%         
+        TaskLabels = 3 - destruct(Trial,'Task');
+        
+        
     else
         Score(destruct(Trial,'Block')==1) = -Score(destruct(Trial,'Block')==1);
+        ContextLabels = destruct(Trial,'Block')+1;
     end
     
     % define contrasts. nan is what i leave out
@@ -122,14 +160,15 @@ for Session = 1:length(Trials)
     Contrast.FA(destruct(Trial,'Type')~= 1) = nan;
     % Contrast.Miss = double(destruct(Trial,'ResponseType') == 3);
     % Contrast.Miss(destruct(Trial,'Type')~= 3) = nan;
-%     Contrast.Correct = double(or(destruct(Trial,'ResponseType') == 2,destruct(Trial,'ResponseType') == 3));
-%     Contrast.Correct(destruct(Trial,'Type')==2) = nan;
-%     Contrast.Length = double(destruct(Trial,'Trigger.Stimulus.Time')>1600);
+    %     Contrast.Correct = double(or(destruct(Trial,'ResponseType') == 2,destruct(Trial,'ResponseType') == 3));
+    %     Contrast.Correct(destruct(Trial,'Type')==2) = nan;
+    %     Contrast.Length = double(destruct(Trial,'Trigger.Stimulus.Time')>1600);
     Contrast.BlockLocation = double(destruct(Trial,'Post.Cue')>4);
     if ~CCD
         Contrast.BlockLocation(isnan(destruct(Trial,'Post.Cue'))) = ...
             double(destruct(Trial(isnan(destruct(Trial,'Post.Cue'))),'Post.Distractor')>4);
     end
+    
     % store each classification
     ContrastNames = fieldnames(Contrast);
     for K = 1:length(ContrastNames)
@@ -137,80 +176,118 @@ for Session = 1:length(Trials)
             if ~CCD
                 for Task= 1:2
                     if ~all(isnan(Score(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task))))
-                        Point1(Session,K,Task,Bin+1) = nanmean(Score(and(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task),~isnan(Score)))>0);
-                        Point2{K,Task,Bin+1} = cat(1,Point2{K,Task,Bin+1},Score(and(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task),~isnan(Score)))>0);
+                        SessionedAccuracy(Session,K,Task,Bin+1) = nanmean(Score(and(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task),~isnan(Score)))>0);
+                        PooledAccuracy{K,Task,Bin+1} = cat(1,PooledAccuracy{K,Task,Bin+1},Score(and(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task),~isnan(Score)))>0);
+                        
+                        SessionedScore(Session,K,Task,Bin+1) = nanmean(Zcore(and(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task),~isnan(Zcore))));
+                        PooledScore{K,Task,Bin+1} = cat(1,PooledAccuracy{K,Task,Bin+1},Zcore(and(and(Contrast.(ContrastNames{K})==Bin,TaskLabels==Task),~isnan(Zcore))));
                     else
-                        Point1(Session,K,Task,Bin+1) = nan;
+                        SessionedAccuracy(Session,K,Task,Bin+1) = nan;
+                        
+                        SessionedScore(Session,K,Task,Bin+1) = nan;
                     end
                 end
             else
                 if ~all(isnan(Score(Contrast.(ContrastNames{K})==Bin)))
-                    Point1(Session,K,1,Bin+1) = nanmean(Score(and(Contrast.(ContrastNames{K})==Bin,~isnan(Score)))>0);
-                    Point2{K,1,Bin+1} = cat(1,Point2{K,1,Bin+1},Score(and(Contrast.(ContrastNames{K})==Bin,~isnan(Score)))>0);
+                    SessionedAccuracy(Session,K,1,Bin+1) = nanmean(Score(and(Contrast.(ContrastNames{K})==Bin,~isnan(Score)))>0);
+                    PooledAccuracy{K,1,Bin+1} = cat(1,PooledAccuracy{K,1,Bin+1},Score(and(Contrast.(ContrastNames{K})==Bin,~isnan(Score)))>0);
+                    
+                    for Context = 1:2
+                        SessionedScore(Session,K,Context,Bin+1) = nanmean(Zcore(and(and(Contrast.(ContrastNames{K})==Bin,~isnan(Zcore)),ContextLabels==Context)));
+                        PooledScore{K,Context,Bin+1} = cat(1,PooledAccuracy{K,1,Bin+1},Zcore(and(and(Contrast.(ContrastNames{K})==Bin,~isnan(Zcore)),ContextLabels==Context)));
+                    end
                 else
-                    Point1(Session,K,1,Bin+1) = nan;
+                    SessionedAccuracy(Session,K,1,Bin+1) = nan;
+                    
+                    SessionedScore(Session,K,1,Bin+1) = nan;
                 end
             end
-            
         end
-%         if K == 1
-%             mean(Point1(:,1,1,2))
-%             mean(Point2{1,1,2})
-%         end
+        %         if K == 1
+        %             mean(Point1(:,1,1,2))
+        %             mean(Point2{1,1,2})
+        %         end
     end
 end
 
 %% PLOT
-figure;
-set(gcf, 'Position',  [500, 300, 700, 400])
-
-Colours; if CCD; Blue = Black; end
-
-for K = 1:length(ContrastNames)
-    Ax{1} = subplot(2,length(ContrastNames),K);
-    hold on;
+for Style = 1:2
+    Sessioned = swap({SessionedAccuracy; SessionedScore},Style);
+    Pooled = swap({PooledAccuracy; PooledScore},Style);
     
-    % discrimination // CCD
-    % first three
-    for C = 1:1+(~CCD)
-        X = plot([Point1(:,K,C,1) Point1(:,K,C,2)]','color',swaparoo({Blue;Red},C),'LineWidth',1,'Marker','o','MarkerFaceColor',White,'MarkerEdgeColor',swaparoo({Blue;Red},C),'MarkerSize',5);
-        for Y = 1:length(X)
-            X(Y).Color = cat(2,swaparoo({Blue;Red},C),0.2);
-        end
-        plot([0.75 1.25],[nanmedian(Point1(:,K,C,1)) nanmedian(Point1(:,K,C,1))],'LineWidth',2,'color',swaparoo({Blue;Red},C));
-        plot([1.75 2.25],[nanmedian(Point1(:,K,C,2)) nanmedian(Point1(:,K,C,2))],'LineWidth',2,'color',swaparoo({Blue;Red},C));
-        try
-            [Sig(K,1)] = signrank(Point1(:,K,C,2), Point1(:,K,C,1));
-            text(0,0.75+(C*0.05),num2str(Sig(K)),'color',swaparoo({Blue;Red},C));
-        end
+    figure;
+    set(gcf, 'Position', [500, 300, 700, 400])
+    
+    Colours;% if and(CCD,Style==1); Blue = Black; end
+    if CCD; Blue = swap({Orange;Black},(Style == 1)+1); Red = Green;end
+    if DistractorEncoding
+        Red = Orange;
     end
     
-    % second three
-    Ax{2} = subplot(2,length(ContrastNames),K+(length(ContrastNames)));
-    hold on;
-    for C = 1:1+(~CCD)
-        for Bin = 1:2
-            [Mean{Bin}, CI{Bin}] = binofit(sum(Point2{K,C,Bin}),length(Point2{K,C,Bin}));
+    for K = 1:length(ContrastNames)
+        Ax{1} = subplot(2,length(ContrastNames),K);
+        hold on;
+        
+        % discrimination // CCD
+        % first three
+        for C = 1:1+(or(~CCD,Style==2))
+            X = plot([Sessioned(:,K,C,1) Sessioned(:,K,C,2)]','color',swap({Blue;Red},C),'LineWidth',1,'Marker','o','MarkerFaceColor',White,'MarkerEdgeColor',swap({Blue;Red},C),'MarkerSize',5);
+            for Y = 1:length(X)
+                X(Y).Color = cat(2,swap({Blue;Red},C),0.2);
+            end
+            plot([0.75 1.25],[nanmedian(Sessioned(:,K,C,1)) nanmedian(Sessioned(:,K,C,1))],'LineWidth',2,'color',swap({Blue;Red},C));
+            plot([1.75 2.25],[nanmedian(Sessioned(:,K,C,2)) nanmedian(Sessioned(:,K,C,2))],'LineWidth',2,'color',swap({Blue;Red},C));
+            try
+                [Sig(K,1)] = signrank(Sessioned(:,K,C,2), Sessioned(:,K,C,1));
+                text(0,0.75+(C*0.05),num2str(Sig(K)),'color',swap({Blue;Red},C));
+            end
         end
-        errorbar(0,Mean{1},Mean{1}-CI{1}(1),Mean{1}-CI{1}(2),'LineWidth',2,'color',swaparoo({Blue;Red},C),'Marker','o','MarkerFaceColor',swaparoo({Blue;Red},C),'MarkerSize',5);
-        errorbar(1,Mean{2},Mean{2}-CI{2}(1),Mean{2}-CI{2}(2),'LineWidth',2,'color',swaparoo({Blue;Red},C),'Marker','o','MarkerFaceColor',swaparoo({Blue;Red},C),'MarkerSize',5);
-        [~,Sig(K)] = fishertest([[sum(Point2{K,C,1}) sum(Point2{K,C,2})];[sum(Point2{K,C,1}==0) sum(Point2{K,C,2}==0)]]);
-        NumTrials = sum(Point2{K,C,2})+sum(Point2{K,C,1})+sum(Point2{K,C,1}==0)+sum(Point2{K,C,2}==0);
-        text(1,0.75+(C*0.05),num2str(NumTrials),'color',Black);
-        text(0,0.75+(C*0.05),num2str(Sig(K)),'color',swaparoo({Blue;Red},C));
-    end
-    
-    % misc
-    for Axes = 1:2
-        Ax{Axes}.XTick = [0 1] + (Axes==1);
-        Ax{Axes}.XTickLabel = XPairs{K};
-        Ax{Axes}.XLim = [-0.5 1.5]   + (Axes==1);
-        Ax{Axes}.YTick = [0 0.5 1];
-        Ax{Axes}.YLim = [0+(0.5*(Axes~=1)) 1];
-        Ax{Axes}.YTickLabel = {'0%';'50%';'100%'};
+        
+        % second three
+        Ax{2} = subplot(2,length(ContrastNames),K+(length(ContrastNames)));
+        hold on;
+        for C = 1:1+(or(~CCD,Style==2))
+            for Bin = 1:2
+                [Mean{Bin}, CI{Bin}] = binofit(sum(Pooled{K,C,Bin}),length(Pooled{K,C,Bin}));
+            end
+            errorbar(0,Mean{1},Mean{1}-CI{1}(1),Mean{1}-CI{1}(2),'LineWidth',2,'color',swap({Blue;Red},C),'Marker','o','MarkerFaceColor',swap({Blue;Red},C),'MarkerSize',5);
+            errorbar(1,Mean{2},Mean{2}-CI{2}(1),Mean{2}-CI{2}(2),'LineWidth',2,'color',swap({Blue;Red},C),'Marker','o','MarkerFaceColor',swap({Blue;Red},C),'MarkerSize',5);
+            if Style == 1
+            [~,Sig(K)] = fishertest([[sum(Pooled{K,C,1}) sum(Pooled{K,C,2})];[sum(Pooled{K,C,1}==0) sum(Pooled{K,C,2}==0)]]);
+            else
+                Sig(K) = nan;
+            end
+            NumTrials = sum(Pooled{K,C,2})+sum(Pooled{K,C,1})+sum(Pooled{K,C,1}==0)+sum(Pooled{K,C,2}==0);
+            text(1,0.75+(C*0.05),num2str(NumTrials),'color',Black);
+            text(0,0.75+(C*0.05),num2str(Sig(K)),'color',swap({Blue;Red},C));
+        end
+        
+        if Style == 1
+            % misc
+            for Axes = 1:2
+                Ax{Axes}.XTick = [0 1] + (Axes==1);
+                Ax{Axes}.XTickLabel = XPairs{K};
+                Ax{Axes}.XLim = [-0.5 1.5]   + (Axes==1);
+                Ax{Axes}.YTick = [0 0.5 1];
+                Ax{Axes}.YLim = [0+(0.5*(Axes~=1)) 1];
+                %             Ax{Axes}.YLim = [0.5 1];
+                Ax{Axes}.YTickLabel = {'0%';'50%';'100%'};
+            end
+        else
+            Min = min(Sessioned(:));
+            Max = max(Sessioned(:));
+            for Axes = 1:2
+                Ax{Axes}.XTick = [0 1] + (Axes==1);
+                Ax{Axes}.XTickLabel = XPairs{K};
+                Ax{Axes}.XLim = [-0.5 1.5]   + (Axes==1);
+                Ax{Axes}.YTick = [Min 0 Max];
+                %                             Ax{Axes}.YLim = [0+(0.5*(Axes~=1)) 1];
+                Ax{Axes}.YLim = [Min Max];
+                Ax{Axes}.YTickLabel = [Min 0 Max];
+            end
+        end
     end
 end
-
 
 
 %% ROC ANALYSIS
@@ -245,7 +322,7 @@ if ROC
             Values{Session}(1,destruct(TempTrial,'Block')==0) = -Values{Session}(1,destruct(TempTrial,'Block')==0);
         end
         %         % ALTERNATIVE WMCD SCORE
-%         Values{Session}(1,:) = -Scores{Session}(destruct(Trial,'Task') == 1);
+        %         Values{Session}(1,:) = -Scores{Session}(destruct(Trial,'Task') == 1);
         
         Labels{Session} = double(destruct(TempTrial,'ResponseType') == 2);
         Labels{Session}(destruct(TempTrial,'Type')~= 1) = nan;

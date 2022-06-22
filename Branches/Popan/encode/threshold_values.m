@@ -1,5 +1,6 @@
-function [EnNaN] = threshold_values(Activities,Range,Iterate,Threshold,Five,DePre)
+function [EnNaN] = threshold_values(Activities,Range,Iterate,Threshold,Five,DePre,RNG)
 
+rng(RNG);
 % get values for threshold
 if Five
     for Iter = 1:Iterate

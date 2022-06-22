@@ -14,7 +14,7 @@ for Area = 1:2
             for Trigger = 1:2
                 TempData1 = Stat{Area,CD}{1}{Condition,Trigger};
                 TempData2 = Stat{Area,CD}{2}{Condition,Trigger};
-                TempData1 = TempData1 .* swaparoo(cat(1,ones(size(Stat,2)-1, 1),-1)',CD);
+                TempData1 = TempData1 .* swap(cat(1,ones(size(Stat,2)-1, 1),-1)',CD);
                 Data(:,Area,CD,Condition,Trigger) = nanmean(cat(2,TempData1,TempData2),2);
             end
         end
@@ -53,14 +53,14 @@ for SP = 1:length(Stat(:))
     if exist('YLim','var')
         Ax.YLim = YLim;
     else
-        Ax.YLim = round([(min(min(Data(:,Area,CD,:,1))) - nanstd(lineate(Data(:,Area,CD,:,1)))) (max(max(Data(:,Area,CD,:,1))) + nanstd(lineate(Data(:,Area,CD,:,1))))],1);
+        Ax.YLim = round([(min(min(Data(:,Area,CD,:,1))) - nanstd(straighten(Data(:,Area,CD,:,1)))) (max(max(Data(:,Area,CD,:,1))) + nanstd(straighten(Data(:,Area,CD,:,1))))],1);
     end
 %     Ax.YTick = sort(cat(2,Ax.YLim,0));
     Ax.YTick = sort(cat(2,Ax.YLim,0));
 
     Ax.XTickLabel = {'Off';'On'};
     
-    ylabel(swaparoo({'Avg';'PC1';'CCD'},CD));
+    ylabel(swap({'Avg';'PC1';'CCD'},CD));
 end
 
 

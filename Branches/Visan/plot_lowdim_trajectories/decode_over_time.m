@@ -35,29 +35,9 @@ for Session = 1:NumSessions
                     end
                     TempCIDiff(Dim,II,Session,Shuff-1) = nanmean(TempShuffAvg{1}) - nanmean(TempShuffAvg{2}); % mean trials M - D
                 end
-                %             elseif Style == 3
-                %                 for Task = 1:2
-                %                     TempAvg{Task}(:) = Statistic{Session,Task,1}(:,Dim,II); % all trials of task 1
-                %                     TempAvg{Task}(isnan(TempAvg{Task})') = [];
-                %                 end
-                %                 Diff(Dim,II,Session) = nanmean(TempAvg{1}) - nanmean(TempAvg{2}); % mean trials M - D
-                %
-                %
-                %
-                %             end
-                %             elseif Style == 3
-                %                 for Task = 1:2
-                %                     TempAvg{Task,Dim}(:) = Statistic{Session,Task,1}(:,Dim,II); % all trials of task 1
-                %                     TempAvg{Task,Dim}(isnan(TempAvg{Task})') = [];
-                %                     for Shuff = 2:size(Statistic,3)
-                %                         TempShuffAvg{Shuff-1,Task,Dim}(:) = Statistic{Session,Task,Shuff}(:,Dim,II); % all trials of task 1
-                %                         TempShuffAvg{Shuff-1,Task,Dim}(isnan(TempShuffAvg{Task})') = [];
-                %                     end
-                %                 end
-                %             end
             end
         end
-        if Style == 3
+        if Style >= 3
             NewDiff(II,Session) = (sum(Diff(:,II,Session) .^ 2)).^0.5;
             for Shuff = 1:size(TempCIDiff,4)
                 ShuffleDiff(II,Session,Shuff) =  (sum(TempCIDiff(:,II,Session,Shuff).^2)).^ 0.5;
@@ -65,8 +45,8 @@ for Session = 1:NumSessions
         end
     end
 end
-if Style == 3
-Diff = NewDiff;
+if Style >= 3
+    Diff = NewDiff;
 end
 
 % adjsut / average across sessions
@@ -93,10 +73,23 @@ if Style == 3
         % averge across sessions and get CI
         CIDiff(II,1) = prctile(TempShuffDiff,2.5);
         CIDiff(II,2) = prctile(TempShuffDiff,97.5);
-%         pdfit(TempShuffDiff);
+        %         pdfit(TempShuffDiff);
         P(II) = normcdf(-abs(Trace(II)),mean(TempShuffDiff),std(TempShuffDiff)) + (1-(normcdf(abs(Trace(II)),mean(TempShuffDiff),std(TempShuffDiff))));
         
-%        
+        %
+    end
+end
+
+
+if Style == 4
+    for II = 1:Duration
+        Trace(II) = nanmean(Diff(II,:));
+        TempShuffDiff = nanmean(ShuffleDiff(II,:));
+        
+        CIDiff(II,1) = prctile(ShuffleDiff(II,:),2.5);
+        CIDiff(II,2) = prctile(ShuffleDiff(II,:),97.5);
+        
+        P(II) = signrank(Diff(II,:),ShuffleDiff(II,:));
     end
 end
 %% plot
@@ -114,11 +107,6 @@ if Style  == 1
             CIs(II,2) = prctile(TempData,2.5);
             CIs(II,1) = prctile(TempData,97.5);
             
-            %             PD = fitdist(squeeze(Sig(Dim,II,:)),'Gamma');
-            %             PD = binofit(squeeze(Sig(Dim,II,:)),'Normal');
-            
-            %             TempCI = paramci(PD);
-            %             CIs(II,:) = [TempCI(2,1) TempCI(1,1)];
         end
         
         
@@ -143,15 +131,8 @@ elseif Style == 2
     figure;
     for Dim = 1:size(Statistic{1},2)
         subplot(size(Statistic{1},2),1,Dim);
-        %     plot(squeeze(Sig(Dim,:,:)));
-        %         for II = 1:size(Statistic{1},3)
-        %             PD = fitdist(squeeze(Diff(Dim,II,:)),'Normal');
-        %             TempCI = paramci(PD);
-        %             CIs(II,:) = [TempCI(2,1) TempCI(1,1)];
-        %         end
         
-%         patches(zeros(15,1),squeeze(CIDiff(Dim,1:15,:)),[1:15])
-%         patches(zeros(9,1),squeeze(CIDiff(Dim,16:24,:)),[16:24])
+        
         patches([],squeeze(CIDiff(Dim,1:15,:)),[1:15])
         patches([],squeeze(CIDiff(Dim,16:24,:)),[16:24])
         hold on
@@ -171,14 +152,8 @@ elseif Style == 2
     
     
     
-elseif Style == 3
+elseif Style >= 3
     figure;
-    %     plot(squeeze(Sig(Dim,:,:)));
-    %         for II = 1:size(Statistic{1},3)
-    %             PD = fitdist(squeeze(Diff(Dim,II,:)),'Normal');
-    %             TempCI = paramci(PD);
-    %             CIs(II,:) = [TempCI(2,1) TempCI(1,1)];
-    %         end
     
     patches([],squeeze(CIDiff(1:15,:)),[1:15])
     patches([],squeeze(CIDiff(16:24,:)),[16:24])
@@ -186,7 +161,7 @@ elseif Style == 3
     plot(Trace(1:15),'k','LineWidth',2)
     plot([16:24],Trace(16:24),'k','LineWidth',2)
     
-%     line([1 24],[0 0],'color','k','LineWidth',1.5,'LineStyle','--')
+    %     line([1 24],[0 0],'color','k','LineWidth',1.5,'LineStyle','--')
     line([15.5 15.5],[0 0.2],'color','r','LineWidth',1.5);
     Ax = gca;
     Ax.YTick = [0 0.2];
